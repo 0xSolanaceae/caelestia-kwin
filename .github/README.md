@@ -281,8 +281,7 @@ Then rebuild the shell by running setup.sh again.
 - **[ladybug-me](https://github.com/ladybug-me)** for meticulously adapting the dotfiles to KDE Plasma.
 - **[0xSolanaceae](https://github.com/0xSolanaceae)** for contributing the uninstallation feature.
 - **[Content-Swordfish751](https://www.reddit.com/user/Content-Swordfish751/)** for many important contributions.
--
-**[Peace-W](https://github.com/Peace-W)** for Nobara fix.
+- **[Peace-W](https://github.com/Peace-W)** for Nobara fix.
 - **[dim-ghub](https://github.com/dim-ghub/caelestia-shell)** for the added features in v2.0.0 from his fork.
 - **[Quickshell](https://quickshell.outfoxxed.me/)** — The robust Qt widget framework.
 - **[Darkly](https://github.com/vinceliuice/Darkly)** — For the gorgeous KDE theme base.
