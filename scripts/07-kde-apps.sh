@@ -70,7 +70,18 @@ if [[ "${APPLY_MATERIAL_YOU:-true}" == "true" ]]; then
         fi
     fi
 else
-    echo "  [SKIP] Skipping kde-material-you-colors installation."
+    echo "  [SKIP] Skipping kde-material-you-colors installation. Uninstalling if present..."
+    
+    # Stop the service if running
+    systemctl --user stop kde-material-you-colors.service 2>/dev/null || true
+    systemctl --user disable kde-material-you-colors.service 2>/dev/null || true
+    
+    # Uninstall the package
+    if [[ "$BASE_DISTRO" == "arch" ]]; then
+        sudo pacman -Rs --noconfirm kde-material-you-colors 2>/dev/null || true
+    elif [[ "$BASE_DISTRO" == "fedora" ]]; then
+        uv tool uninstall kde-material-you-colors 2>/dev/null || true
+    fi
 fi
 
 # ── darkly (plasma theme) ─────────────────────────────────────────────────────

@@ -117,19 +117,6 @@ tweak_reload_kde() {
 # ─────────────────────────────────────────────────────────────────────────────
 # TWEAK: Set default Caelestia shell scheme
 # ─────────────────────────────────────────────────────────────────────────────
-tweak_default_scheme() {
-    info "Setting default shell scheme to dynamic (Tonal variant)..."
-    
-    if command -v caelestia >/dev/null 2>&1; then
-        caelestia scheme set -n dynamic -v tonalspot 2>/dev/null || true
-    elif python3 -m caelestia --help >/dev/null 2>&1; then
-        python3 -m caelestia scheme set -n dynamic -v tonalspot 2>/dev/null || true
-    elif [[ -x /usr/bin/caelestia ]]; then
-        /usr/bin/caelestia scheme set -n dynamic -v tonalspot 2>/dev/null || true
-    fi
-
-    ok "Default scheme configured."
-}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TWEAK: Set default shell to Fish
@@ -233,7 +220,6 @@ fi
 tweak_disable_kde_osd
 tweak_five_desktops
 tweak_workspace_shortcuts
-tweak_default_scheme
 tweak_default_shell
 tweak_patch_caelestia_cli
 tweak_reload_kde

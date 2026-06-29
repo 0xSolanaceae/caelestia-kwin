@@ -13,9 +13,9 @@ Singleton {
     id: root
 
     property bool showPreview
-    property string scheme
-    property string flavour
-    property string variant
+    property string scheme: "dynamic"
+    property string flavour: "default"
+    property string variant: "default"
     property string previewScheme: ""
     property string previewFlavour: ""
     property string previewVariant: ""

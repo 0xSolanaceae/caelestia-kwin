@@ -13,6 +13,7 @@ function updateWindows() {
             result.push({
                 title: w.caption,
                 class: w.resourceClass,
+                initialClass: w.resourceName || w.resourceClass,
                 workspace: { id: desktopId },
                 at: [w.frameGeometry ? w.frameGeometry.x : 0, w.frameGeometry ? w.frameGeometry.y : 0],
                 size: [w.frameGeometry ? w.frameGeometry.width : 0, w.frameGeometry ? w.frameGeometry.height : 0],
