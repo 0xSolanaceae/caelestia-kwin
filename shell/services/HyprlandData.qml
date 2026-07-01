@@ -22,6 +22,13 @@ Singleton {
     property var monitors: []
     property var layers: ({})
 
+    // Coalesce bursty compositor events into fewer refresh passes.
+    property bool pendingWindowListUpdate: false
+    property bool pendingLayersUpdate: false
+    property bool pendingMonitorsUpdate: false
+    property bool pendingWorkspacesUpdate: false
+    property bool pendingActiveWorkspaceUpdate: false
+
     // Convenient stuff
 
     function toplevelsForWorkspace(workspace) {
@@ -46,28 +53,68 @@ Singleton {
 
     // Internals
 
+    function flushPendingUpdates() {
+        if (pendingWindowListUpdate && !getClients.running) {
+            pendingWindowListUpdate = false;
+            getClients.running = true;
+        }
+
+        if (pendingLayersUpdate && !getLayers.running) {
+            pendingLayersUpdate = false;
+            getLayers.running = true;
+        }
+
+        if (pendingMonitorsUpdate && !getMonitors.running) {
+            pendingMonitorsUpdate = false;
+            getMonitors.running = true;
+        }
+
+        if (pendingWorkspacesUpdate && !getWorkspaces.running) {
+            pendingWorkspacesUpdate = false;
+            getWorkspaces.running = true;
+        }
+
+        if (pendingActiveWorkspaceUpdate && !getActiveWorkspace.running) {
+            pendingActiveWorkspaceUpdate = false;
+            getActiveWorkspace.running = true;
+        }
+    }
+
+    function queueUpdates(windowList: bool, layers: bool, monitors: bool, workspaces: bool): void {
+        pendingWindowListUpdate = pendingWindowListUpdate || windowList;
+        pendingLayersUpdate = pendingLayersUpdate || layers;
+        pendingMonitorsUpdate = pendingMonitorsUpdate || monitors;
+        pendingWorkspacesUpdate = pendingWorkspacesUpdate || workspaces;
+        pendingActiveWorkspaceUpdate = pendingActiveWorkspaceUpdate || workspaces;
+        updateCoalesceTimer.restart();
+    }
+
     function updateWindowList() {
-        getClients.running = true;
+        queueUpdates(true, false, false, false);
     }
 
     function updateLayers() {
-        getLayers.running = true;
+        queueUpdates(false, true, false, false);
     }
 
     function updateMonitors() {
-        getMonitors.running = true;
+        queueUpdates(false, false, true, false);
     }
 
     function updateWorkspaces() {
-        getWorkspaces.running = true;
-        getActiveWorkspace.running = true;
+        queueUpdates(false, false, false, true);
     }
 
     function updateAll() {
-        updateWindowList();
-        updateMonitors();
-        updateLayers();
-        updateWorkspaces();
+        queueUpdates(true, true, true, true);
+    }
+
+    Timer {
+        id: updateCoalesceTimer
+
+        interval: 24
+        repeat: false
+        onTriggered: root.flushPendingUpdates()
     }
 
     function updateForEvent(name) {
@@ -123,6 +170,10 @@ Singleton {
     Process {
         id: getClients
         command: ["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl clients -j"]
+        onRunningChanged: {
+            if (!running)
+                root.flushPendingUpdates();
+        }
         stdout: StdioCollector {
             id: clientsCollector
             onStreamFinished: {
@@ -146,6 +197,10 @@ Singleton {
     Process {
         id: getMonitors
         command: ["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl monitors -j"]
+        onRunningChanged: {
+            if (!running)
+                root.flushPendingUpdates();
+        }
         stdout: StdioCollector {
             id: monitorsCollector
             onStreamFinished: {
@@ -157,6 +212,10 @@ Singleton {
     Process {
         id: getLayers
         command: ["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl layers -j"]
+        onRunningChanged: {
+            if (!running)
+                root.flushPendingUpdates();
+        }
         stdout: StdioCollector {
             id: layersCollector
             onStreamFinished: {
@@ -168,6 +227,10 @@ Singleton {
     Process {
         id: getWorkspaces
         command: ["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl workspaces -j"]
+        onRunningChanged: {
+            if (!running)
+                root.flushPendingUpdates();
+        }
         stdout: StdioCollector {
             id: workspacesCollector
             onStreamFinished: {
@@ -188,6 +251,10 @@ Singleton {
     Process {
         id: getActiveWorkspace
         command: ["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl activeworkspace -j"]
+        onRunningChanged: {
+            if (!running)
+                root.flushPendingUpdates();
+        }
         stdout: StdioCollector {
             id: activeWorkspaceCollector
             onStreamFinished: {
