@@ -183,7 +183,7 @@ StyledWindow {
         Config.screen: root.screen.name
         anchors.fill: parent
         opacity: GlobalConfig.appearance.pitchBlack ? 1 : (Colours.transparency.enabled ? Colours.transparency.base : root.surfaceColour.a)
-        layer.enabled: true
+        layer.enabled: root.shadowOpacity > 0
         layer.effect: MultiEffect {
             shadowEnabled: true
             blurMax: 15

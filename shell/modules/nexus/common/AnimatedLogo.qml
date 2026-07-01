@@ -52,7 +52,7 @@ Item {
         layer.effect: MultiEffect {
             blurEnabled: true
             blur: root.blurAmount
-            blurMax: 60
+            blurMax: 32
         }
 
         Component.onCompleted: {

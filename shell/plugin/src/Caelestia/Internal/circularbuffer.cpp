@@ -24,6 +24,7 @@ void CircularBuffer::setCapacity(int capacity) {
     m_data.fill(0.0);
     m_head = 0;
     m_count = 0;
+    m_valuesDirty = true;
 
     // Re-push old values, keeping the most recent ones
     const auto start = old.size() > capacity ? old.size() - capacity : 0;
@@ -43,11 +44,16 @@ int CircularBuffer::count() const {
 }
 
 QList<qreal> CircularBuffer::values() const {
-    QList<qreal> result;
-    result.reserve(m_count);
+    if (!m_valuesDirty)
+        return m_cachedValues;
+
+    m_cachedValues.clear();
+    m_cachedValues.reserve(m_count);
     for (int i = 0; i < m_count; ++i)
-        result.append(at(i));
-    return result;
+        m_cachedValues.append(at(i));
+
+    m_valuesDirty = false;
+    return m_cachedValues;
 }
 
 qreal CircularBuffer::maximum() const {
@@ -66,6 +72,7 @@ void CircularBuffer::push(qreal value) {
 
     m_data[m_head] = value;
     m_head = (m_head + 1) % m_capacity;
+    m_valuesDirty = true;
     if (m_count < m_capacity) {
         m_count++;
         emit countChanged();
@@ -79,6 +86,7 @@ void CircularBuffer::clear() {
 
     m_head = 0;
     m_count = 0;
+    m_valuesDirty = true;
     emit countChanged();
     emit valuesChanged();
 }

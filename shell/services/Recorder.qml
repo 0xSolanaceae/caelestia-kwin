@@ -80,7 +80,7 @@ Singleton {
     }
 
     Timer {
-        interval: 500
+        interval: props.running ? 500 : 5000
         repeat: true
         running: true
         onTriggered: {

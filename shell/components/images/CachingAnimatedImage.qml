@@ -9,6 +9,10 @@ AnimatedImage {
     asynchronous: true
     fillMode: AnimatedImage.PreserveAspectCrop
     source: path || ""
+    sourceSize: {
+        const dpr = (QsWindow.window as QsWindow)?.devicePixelRatio ?? 1;
+        return Qt.size(width * dpr, height * dpr);
+    }
     playing: true
 
     onSourceChanged: playing = true

@@ -70,6 +70,35 @@ Singleton {
         updateWorkspaces();
     }
 
+    function updateForEvent(name) {
+        if (name === "screencast")
+            return;
+
+        if (["openlayer", "closelayer"].includes(name)) {
+            updateLayers();
+            return;
+        }
+
+        if (["workspace", "workspacev2", "focusedmon", "focusedmonv2"].includes(name)) {
+            updateWorkspaces();
+            return;
+        }
+
+        if (["openwindow", "closewindow", "movewindow", "windowtitle", "activewindow", "activewindowv2"].includes(name)) {
+            updateWindowList();
+            return;
+        }
+
+        if (["monitoradded", "monitorremoved", "monitoraddedv2", "monitorremovedv2"].includes(name)) {
+            updateMonitors();
+            updateWorkspaces();
+            updateWindowList();
+            return;
+        }
+
+        updateAll();
+    }
+
     function biggestWindowForWorkspace(workspaceId) {
         const windowsInThisWorkspace = HyprlandData.windowList.filter(w => w.workspace.id == workspaceId);
         return windowsInThisWorkspace.reduce((maxWin, win) => {
@@ -83,22 +112,11 @@ Singleton {
         updateAll();
     }
 
-    Timer {
-        interval: 200
-        running: true
-        repeat: true
-        onTriggered: {
-            updateAll();
-        }
-    }
-
     Connections {
         target: Hyprland
 
         function onRawEvent(event) {
-            // console.log("Hyprland raw event:", event.name);
-            if (["openlayer", "closelayer", "screencast"].includes(event.name)) return;
-            updateAll()
+            updateForEvent(event.name);
         }
     }
 

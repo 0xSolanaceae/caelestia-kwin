@@ -213,7 +213,7 @@ Item {
         anchors.fill: parent
         // Removed clip: true from here so the shadow doesn't get cut off
 
-        layer.enabled: Config.background.desktopLyrics.shadow.enabled
+        layer.enabled: Config.background.desktopLyrics.shadow.enabled && root.hasLyrics
         layer.effect: MultiEffect {
             shadowEnabled: true
             shadowColor: Colours.palette.m3shadow
@@ -237,7 +237,7 @@ Item {
                 maskEnabled: true
                 blurEnabled: true
                 blur: 1
-                blurMax: 64
+                blurMax: 32
                 autoPaddingEnabled: false
             }
         }

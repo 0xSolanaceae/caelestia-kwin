@@ -119,26 +119,34 @@ Item {
     }
 
     Timer {
-        id: mediaCheckTimer
-
-        interval: 500
-        running: GlobalConfig.background.videoWallpaperMuteOnMedia
-        repeat: true
-
-        onTriggered: checkMuteState()
-    }
-
-    Timer {
         id: checkTimer
 
-        interval: 100
-        running: true
+        interval: 500
+        running: !!root.path
         repeat: true
 
         onTriggered: {
             checkPauseState();
+            if (GlobalConfig.background.videoWallpaperMuteOnMedia)
+                checkMuteState();
+        }
+    }
+
+    Connections {
+        function onActiveChanged() {
             checkMuteState();
         }
+
+        target: Players
+    }
+
+    Connections {
+        function onIsPlayingChanged() {
+            checkMuteState();
+        }
+
+        ignoreUnknownSignals: true
+        target: Players.active
     }
 
     Connections {

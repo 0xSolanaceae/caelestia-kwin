@@ -211,6 +211,23 @@ void FileSystemModel::setNameFilters(const QStringList& nameFilters) {
     update();
 }
 
+int FileSystemModel::maxEntries() const {
+    return m_maxEntries;
+}
+
+void FileSystemModel::setMaxEntries(int maxEntries) {
+    if (maxEntries < 0)
+        maxEntries = 0;
+
+    if (m_maxEntries == maxEntries)
+        return;
+
+    m_maxEntries = maxEntries;
+    emit maxEntriesChanged();
+
+    update();
+}
+
 QQmlListProperty<FileSystemEntry> FileSystemModel::entries() {
     return QQmlListProperty<FileSystemEntry>(this, &m_entries);
 }
@@ -285,6 +302,7 @@ void FileSystemModel::updateEntriesForDir(const QString& dir) {
     const auto showHidden = m_showHidden;
     const auto filter = m_filter;
     const auto nameFilters = m_nameFilters;
+    const auto maxEntries = m_maxEntries;
 
     QSet<QString> oldPaths;
     for (const auto& entry : std::as_const(m_entries)) {
@@ -349,6 +367,10 @@ void FileSystemModel::updateEntriesForDir(const QString& dir) {
         while (iter->hasNext()) {
             if (promise.isCanceled()) {
                 return;
+            }
+
+            if (maxEntries > 0 && newPaths.size() >= maxEntries) {
+                break;
             }
 
             QString path = iter->next();

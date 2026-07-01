@@ -211,7 +211,7 @@ Item {
             sourceItem: maskWrapper
             anchors.fill: parent
             hideSource: true
-            live: true
+            live: img.needsMask
         }
 
         readonly property string currentSchemeName: Colours.showPreview ? Colours.previewScheme : Colours.scheme

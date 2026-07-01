@@ -215,7 +215,7 @@ Item {
     FrameAnimation {
         id: physicsLoop
 
-        running: true
+        running: root.visible
         onTriggered: tick(frameTime)
     }
 
@@ -224,7 +224,7 @@ Item {
 
         interval: 200
         repeat: true
-        running: true
+        running: root.visible
         onTriggered: {
             if (!dragging)
                 frameIndex++;
@@ -234,7 +234,7 @@ Item {
     Timer {
         interval: 3000 + Math.random() * 5000
         repeat: true
-        running: true
+        running: root.visible
         triggeredOnStart: true
         onTriggered: {
             if (!dragging && onGround && walkTarget < 0 && currentAnim !== "ground") {

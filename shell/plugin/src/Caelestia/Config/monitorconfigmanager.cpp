@@ -28,6 +28,32 @@ MonitorConfigManager* MonitorConfigManager::create(QQmlEngine*, QJSEngine*) {
     return instance();
 }
 
+void MonitorConfigManager::touchOverlay(const QString& screen) {
+    m_overlayOrder.removeAll(screen);
+    m_overlayOrder.enqueue(screen);
+}
+
+void MonitorConfigManager::evictOverlays(const QString& keepScreen) {
+    while (m_overlays.size() > m_maxOverlays && !m_overlayOrder.isEmpty()) {
+        const QString candidate = m_overlayOrder.dequeue();
+        if (candidate == keepScreen) {
+            m_overlayOrder.enqueue(candidate);
+            if (m_overlayOrder.size() <= 1)
+                break;
+            continue;
+        }
+
+        if (!m_overlays.contains(candidate))
+            continue;
+
+        auto overlay = m_overlays.take(candidate);
+        if (overlay.config)
+            overlay.config->deleteLater();
+        if (overlay.tokens)
+            overlay.tokens->deleteLater();
+    }
+}
+
 GlobalConfig* MonitorConfigManager::configForScreen(const QString& screen) {
     auto& overlay = m_overlays[screen];
     if (!overlay.config) {
@@ -41,6 +67,8 @@ GlobalConfig* MonitorConfigManager::configForScreen(const QString& screen) {
         connect(overlay.config, &GlobalConfig::saveFailed, global, &GlobalConfig::saveFailed);
         connect(overlay.config, &GlobalConfig::unknownOption, global, &GlobalConfig::unknownOption);
     }
+    touchOverlay(screen);
+    evictOverlays(screen);
     return overlay.config;
 }
 
@@ -58,6 +86,8 @@ TokenConfig* MonitorConfigManager::tokensForScreen(const QString& screen) {
         connect(overlay.tokens, &TokenConfig::saveFailed, global, &TokenConfig::saveFailed);
         connect(overlay.tokens, &TokenConfig::unknownOption, global, &TokenConfig::unknownOption);
     }
+    touchOverlay(screen);
+    evictOverlays(screen);
     return overlay.tokens;
 }
 

@@ -6,6 +6,7 @@
 #include <qimage.h>
 #include <qimagereader.h>
 #include <qloggingcategory.h>
+#include <qpainter.h>
 #include <qrunnable.h>
 #include <qthreadpool.h>
 
@@ -92,11 +93,41 @@ private:
         // Schedule cache job (this call will return the original image, but later ones will use cache)
         ImageCacher::instance()->schedule(path, cachePath, size, m_fillMode);
 
-        m_image = QImage(path);
-        if (m_image.isNull()) {
+        // Decode a scaled fallback for this request to avoid a second full-resolution decode.
+        QImageReader reader(path);
+        reader.setAutoTransform(true);
+
+        QSize scaledTarget = size;
+        const QSize sourceSize = reader.size();
+        if (sourceSize.isValid() && !sourceSize.isEmpty()) {
+            if (m_fillMode == ImageCacher::FillMode::Crop)
+                scaledTarget = sourceSize.scaled(size, Qt::KeepAspectRatioByExpanding);
+            else if (m_fillMode == ImageCacher::FillMode::Fit)
+                scaledTarget = sourceSize.scaled(size, Qt::KeepAspectRatio);
+        }
+        if (scaledTarget.isValid() && !scaledTarget.isEmpty())
+            reader.setScaledSize(scaledTarget);
+
+        QImage decoded = reader.read();
+        if (decoded.isNull()) {
             m_error = QStringLiteral("Failed to decode source: ") + path;
             qCWarning(lcCProv).noquote() << m_error;
+            return;
         }
+
+        if (m_fillMode == ImageCacher::FillMode::Stretch || !size.isValid() || size.isEmpty()) {
+            m_image = decoded;
+            return;
+        }
+
+        QImage canvas(size, QImage::Format_ARGB32);
+        canvas.fill(Qt::transparent);
+
+        QPainter painter(&canvas);
+        painter.drawImage((size.width() - decoded.width()) / 2, (size.height() - decoded.height()) / 2, decoded);
+        painter.end();
+
+        m_image = canvas;
     }
 
     QString m_id;

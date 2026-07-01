@@ -14,6 +14,7 @@ import qs.utils
 Singleton {
     id: root
 
+    readonly property int maxNotifs: 200
     property list<NotifData> list: []
     readonly property list<NotifData> notClosed: list.filter(n => !n.closed)
     readonly property list<NotifData> popups: list.filter(n => n.popup)
@@ -43,6 +44,19 @@ Singleton {
             toClose.push(root.list[i]);
         for (let i = 0; i < toClose.length; i++)
             toClose[i].close();
+    }
+
+    function enforceListLimit(): void {
+        if (root.list.length <= maxNotifs)
+            return;
+
+        const kept = root.list.slice(0, maxNotifs);
+        for (let i = maxNotifs; i < root.list.length; i++) {
+            const dropped = root.list[i];
+            if (dropped)
+                dropped.destroy();
+        }
+        root.list = kept;
     }
 
     onDndChanged: {
@@ -107,6 +121,7 @@ Singleton {
                 notification: notif
             });
             root.list = [comp, ...root.list];
+            root.enforceListLimit();
 
             if (!props.dnd && notif.appName !== "caelestia-cli" && !GlobalConfig.audio.sounds.disabledNotifApps.includes(notif.appName))
                 Audio.playNotification();
@@ -123,6 +138,7 @@ Singleton {
             for (const notif of data)
                 root.list.push(notifComp.createObject(root, notif));
             root.list.sort((a, b) => b.time - a.time);
+            root.enforceListLimit();
             root.loaded = true;
         }
         onLoadFailed: err => {

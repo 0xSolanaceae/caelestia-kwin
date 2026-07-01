@@ -39,6 +39,8 @@ private:
     int m_head = 0;
     int m_count = 0;
     int m_capacity = 0;
+    mutable QList<qreal> m_cachedValues;
+    mutable bool m_valuesDirty = true;
 };
 
 } // namespace caelestia::internal

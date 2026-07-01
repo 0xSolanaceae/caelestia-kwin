@@ -27,7 +27,7 @@ PageBase {
 
         // e.g. "Quickshell 0.3.0 (revision ...)"
         Process {
-            running: true
+            running: !root.quickshellVersion
             command: ["quickshell", "--version"]
             stdout: StdioCollector {
                 onStreamFinished: root.quickshellVersion = text.trim().split(" ")[1] ?? ""
@@ -37,7 +37,7 @@ PageBase {
         // Parsed from the caelestia CLI's package listing; the sh wrapper avoids a
         // warning when the (optional) CLI isn't installed
         Process {
-            running: true
+            running: !root.cliVersion
             command: ["sh", "-c", "caelestia --version 2>/dev/null"]
             stdout: StdioCollector {
                 onStreamFinished: {

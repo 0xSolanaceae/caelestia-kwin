@@ -139,7 +139,7 @@ Item {
 
         repeat: true
         triggeredOnStart: true
-        interval: Math.max(15, Math.min(80, 69.8 - 12.3 * Math.log(Notifs.notClosed.length)))
+        interval: Math.max(50, Math.min(120, 90 - 12.3 * Math.log(Math.max(1, Notifs.notClosed.length))))
         onTriggered: {
             const first = Notifs.notClosed[0];
             if (!first) {

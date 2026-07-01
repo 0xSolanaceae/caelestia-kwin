@@ -55,7 +55,7 @@ Item {
                 maskEnabled: true
                 blurEnabled: true
                 blur: 1
-                blurMax: 64
+                blurMax: 32
                 autoPaddingEnabled: false
             }
         }

@@ -22,7 +22,10 @@ QtObject {
             interval: 1000
             repeat: false
 
-            onTriggered: callback(imgPath)
+            onTriggered: {
+                callback(imgPath);
+                destroy();
+            }
         }
     }
 
@@ -51,7 +54,6 @@ QtObject {
                 }
 
                 root.items = result;
-                preloadImages();
             }
         }
     }
@@ -61,12 +63,7 @@ QtObject {
     }
 
     function preloadImages(): void {
-        for (const item of items) {
-            if (item.isImage && item.id) {
-                const imgPath = getImagePath(item.id);
-                Quickshell.execDetached(["sh", "-c", "mkdir -p " + imageCacheDir + " && cliphist decode " + item.id + " > " + imgPath + " 2>&1"]);
-            }
-        }
+        // Intentionally no-op. Images are decoded on demand in ensureImageCached.
     }
 
     function getSortedItems(): var {
@@ -91,10 +88,12 @@ QtObject {
 
     function ensureImageCached(id: int, onReady: var): void {
         const imgPath = getImagePath(id);
-        Quickshell.execDetached(["sh", "-c", "mkdir -p " + imageCacheDir + " && cliphist decode " + id + " > " + imgPath + " 2>&1"]);
+        Quickshell.execDetached(["sh", "-c", "mkdir -p " + imageCacheDir + " && test -s " + imgPath + " || cliphist decode " + id + " > " + imgPath + " 2>&1"]);
         const timer = waitTimer.createObject(root, {
             imgPath: imgPath,
             callback: onReady
         });
+        if (timer)
+            timer.start();
     }
 }

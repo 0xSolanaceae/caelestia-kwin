@@ -71,6 +71,7 @@ class FileSystemModel : public QAbstractListModel {
     Q_PROPERTY(bool sortReverse READ sortReverse WRITE setSortReverse NOTIFY sortReverseChanged)
     Q_PROPERTY(Filter filter READ filter WRITE setFilter NOTIFY filterChanged)
     Q_PROPERTY(QStringList nameFilters READ nameFilters WRITE setNameFilters NOTIFY nameFiltersChanged)
+    Q_PROPERTY(int maxEntries READ maxEntries WRITE setMaxEntries NOTIFY maxEntriesChanged)
 
     Q_PROPERTY(QQmlListProperty<caelestia::models::FileSystemEntry> entries READ entries NOTIFY entriesChanged)
 
@@ -111,6 +112,9 @@ public:
     [[nodiscard]] QStringList nameFilters() const;
     void setNameFilters(const QStringList& nameFilters);
 
+    [[nodiscard]] int maxEntries() const;
+    void setMaxEntries(int maxEntries);
+
     [[nodiscard]] QQmlListProperty<FileSystemEntry> entries();
 
 signals:
@@ -121,6 +125,7 @@ signals:
     void sortReverseChanged();
     void filterChanged();
     void nameFiltersChanged();
+    void maxEntriesChanged();
     void entriesChanged();
 
 private:
@@ -136,6 +141,7 @@ private:
     bool m_sortReverse = false;
     Filter m_filter;
     QStringList m_nameFilters;
+    int m_maxEntries = 5000;
 
     void watchDirIfRecursive(const QString& path);
     void update();

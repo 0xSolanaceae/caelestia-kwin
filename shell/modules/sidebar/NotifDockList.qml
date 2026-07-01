@@ -101,7 +101,7 @@ LazyListView {
             Timer {
                 id: clearTimer
 
-                interval: 15
+                interval: 80
                 repeat: true
                 triggeredOnStart: true
                 onTriggered: {

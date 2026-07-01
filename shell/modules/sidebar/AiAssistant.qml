@@ -12,6 +12,7 @@ import qs.components.effects
 import qs.services
 import qs.utils
 import Quickshell
+import Quickshell.Io
 import M3Shapes
 import Caelestia.Blobs
 
@@ -24,6 +25,8 @@ Item {
     property bool isHistoryTab: false
     property string currentChatId: ""
     property var currentRequest: null
+    readonly property int maxSessions: 50
+    readonly property int maxMessagesPerSession: 200
     
 
     Timer {
@@ -92,29 +95,79 @@ Item {
     }
     property bool inAgentLoop: false
 
+    Component {
+        id: agentProcessComponent
+
+        Process {
+            id: proc
+
+            property string cmd: ""
+            property string reqType: ""
+            property string reqCmd: ""
+            property string outStr: ""
+            property string errStr: ""
+            property bool hasExited: false
+            property bool outFinished: false
+            property bool errFinished: false
+
+            command: ["sh", "-c", cmd]
+
+            function checkDone() {
+                if (hasExited && outFinished && errFinished) {
+                    root.handleAgentProcessResult(reqType, outStr, errStr, reqCmd);
+                    proc.destroy();
+                }
+            }
+
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    proc.outStr = text || "";
+                    proc.outFinished = true;
+                    proc.checkDone();
+                }
+            }
+
+            stderr: StdioCollector {
+                onStreamFinished: {
+                    proc.errStr = text || "";
+                    proc.errFinished = true;
+                    proc.checkDone();
+                }
+            }
+
+            onExited: code => {
+                proc.hasExited = true;
+                proc.checkDone();
+            }
+        }
+    }
+
+    Component {
+        id: assistantTimerComponent
+
+        Timer {
+            property int delayMs: 1000
+            property string notifyCmd: ""
+
+            interval: delayMs
+            running: true
+            repeat: false
+
+            onTriggered: {
+                root.runAgentCommand(notifyCmd, "timer_trigger");
+                destroy();
+            }
+        }
+    }
+
     function runAgentCommand(cmd, type) {
-        var processQml = "import QtQuick\n" +
-                         "import Quickshell.Io\n" +
-                         "Process {\n" +
-                         "    id: proc\n" +
-                         "    command: [\"sh\", \"-c\", " + JSON.stringify(cmd) + "]\n" +
-                         "    property string outStr: \"\"\n" +
-                         "    property string errStr: \"\"\n" +
-                         "    property bool hasExited: false\n" +
-                         "    property bool outFinished: false\n" +
-                         "    property bool errFinished: false\n" +
-                         "    function checkDone() {\n" +
-                         "        if (hasExited && outFinished && errFinished) {\n" +
-                         "            root.handleAgentProcessResult(" + JSON.stringify(type) + ", proc.outStr, proc.errStr, " + JSON.stringify(cmd) + ");\n" +
-                         "            proc.destroy();\n" +
-                         "        }\n" +
-                         "    }\n" +
-                         "    stdout: StdioCollector { onStreamFinished: { proc.outStr = text || \"\"; proc.outFinished = true; proc.checkDone(); } }\n" +
-                         "    stderr: StdioCollector { onStreamFinished: { proc.errStr = text || \"\"; proc.errFinished = true; proc.checkDone(); } }\n" +
-                         "    onExited: code => { proc.hasExited = true; proc.checkDone(); }\n" +
-                         "}";
-        var obj = Qt.createQmlObject(processQml, root, "agentProcess");
-        obj.running = true;
+        const obj = agentProcessComponent.createObject(root, {
+            cmd: cmd,
+            reqType: type,
+            reqCmd: cmd
+        });
+        if (obj)
+            obj.running = true;
     }
 
     property int runningToolsCount: 0
@@ -237,7 +290,14 @@ Item {
                 var parsed = JSON.parse(jsonStr);
                 // Protect against corrupted saves
                 if (Array.isArray(parsed)) {
-                    allChatSessions = parsed.filter(s => s !== null && s.id);
+                    allChatSessions = parsed.filter(s => s !== null && s.id).map(s => {
+                        var safeMessages = Array.isArray(s.messages) ? s.messages.slice(-maxMessagesPerSession) : [];
+                        return {
+                            id: s.id,
+                            title: s.title || "Chat",
+                            messages: safeMessages
+                        };
+                    }).slice(0, maxSessions);
                 }
             } catch (e) {}
         }
@@ -269,6 +329,9 @@ Item {
                 "thoughtText": msg.thoughtText || ""
             });
         }
+
+        if (msgs.length > maxMessagesPerSession)
+            msgs = msgs.slice(msgs.length - maxMessagesPerSession);
         
         if (msgs.length === 0) return;
         
@@ -314,6 +377,9 @@ Item {
                 generateChatTitleAsync(currentChatId, firstUserMsg.text);
             }
         }
+
+        if (allChatSessions.length > maxSessions)
+            allChatSessions = allChatSessions.slice(0, maxSessions);
         
         GlobalConfig.ai.ollamaHistoryJson = JSON.stringify(allChatSessions);
     }
@@ -604,8 +670,10 @@ Item {
                                         var secs = args.seconds || 5;
                                         var msg = args.message || "Timer finished";
                                         var safeMsg = msg.replace(new RegExp("\"", "g"), '\"');
-                                        var timerQml = "import QtQuick; Timer { interval: " + (secs * 1000) + "; running: true; onTriggered: { root.runAgentCommand('notify-send \"Orion Timer\" \"" + safeMsg + "\"', \"timer_trigger\"); destroy(); } }";
-                                        Qt.createQmlObject(timerQml, root, "timer_" + Date.now());
+                                        assistantTimerComponent.createObject(root, {
+                                            delayMs: secs * 1000,
+                                            notifyCmd: 'notify-send "Orion Timer" "' + safeMsg + '"'
+                                        });
                                         accumulatedToolResults += "Tool: set_timer\nResult: Timer successfully set for " + secs + " seconds in the background.\n\n";
                                     } else if (toolName === "get_weather") {
                                         currentActionText = "Checking weather...";
@@ -829,6 +897,7 @@ Item {
                      radius: Tokens.rounding.full
                      ShaderEffectSource {
                          id: switcherBlurSource
+                         live: root.visible
                          sourceItem: contentStack
                          sourceRect: {
                              var p = parent.mapToItem(contentStack, 0, 0);
@@ -1390,6 +1459,7 @@ Item {
                          radius: 24
                          ShaderEffectSource {
                              id: inputBlurSource
+                             live: root.visible
                              sourceItem: contentStack
                              sourceRect: {
                                  var p = parent.mapToItem(contentStack, 0, 0);
