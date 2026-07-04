@@ -477,6 +477,8 @@ Item {
             const appClass = ipc.class || ipc.initialClass;
             if (!appClass) continue;
             
+            if (appClass.toLowerCase().includes("xwaylandvideobridge")) continue;
+            
             let found = false;
             for (const app of apps) {
                 const isToplevelSteamGame = appClass.toLowerCase().startsWith("steam_app_");

@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# ╔══════════════════════════════════════════════════════════════╗
+# ║        Caelestia KDE Port — Unified Updater                 ║
+# ╚══════════════════════════════════════════════════════════════╝
+
+set -uo pipefail
+
+CYAN="\033[0;36m"
+GREEN="\033[0;32m"
+RED="\033[0;31m"
+YELLOW="\033[38;5;220m"
+RST="\033[0m"
+
+die()  { echo -e "${RED}[FATAL] $*${RST}" >&2; exit 1; }
+info() { echo -e "${CYAN}[INFO]  $*${RST}"; }
+ok()   { echo -e "${GREEN}[OK]    $*${RST}"; }
+warn() { echo -e "${YELLOW}[WARN]  $*${RST}"; }
+
+export BUNDLE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$BUNDLE_DIR" || die "Could not enter $BUNDLE_DIR"
+
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}  Step 1 — Source Code Update${RST}"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+
+info "Fetching remote branches..."
+git fetch origin || warn "Failed to fetch from origin. Network issue?"
+
+# Safely stash uncommitted changes to avoid merge conflicts
+if ! git diff-index --quiet HEAD --; then
+    warn "You have uncommitted changes in the repository."
+    info "Stashing your local changes..."
+    git stash -m "Auto-stash before Caelestia update" || die "Failed to stash changes."
+fi
+
+BRANCHES=$(git branch -r | grep -v '\->' | sed 's/.*origin\///')
+echo
+info "Available remote branches:"
+select BRANCH in $BRANCHES; do
+    if [ -n "$BRANCH" ]; then
+        info "Selected branch: $BRANCH"
+        break
+    else
+        warn "Invalid selection. Please enter a valid number."
+    fi
+done
+
+info "Checking out $BRANCH..."
+git checkout "$BRANCH" || die "Failed to checkout $BRANCH"
+
+info "Pulling latest changes for $BRANCH..."
+git pull origin "$BRANCH" || die "Failed to pull from origin/$BRANCH"
+
+
+echo
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}  Step 2 — Core Updates${RST}"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+
+if [ ! -f "$BUNDLE_DIR/scripts/03-deploy-configs.sh" ] || [ ! -f "$BUNDLE_DIR/scripts/08-build-shell.sh" ]; then
+    die "Critical internal scripts are missing from $BUNDLE_DIR/scripts/"
+fi
+
+# Request sudo upfront so it doesn't interrupt the scripts
+info "We need sudo to install any missing dependencies and configure system bridges."
+sudo -v || die "Sudo authentication failed."
+(while true; do sudo -n true; sleep 55; done) 2>/dev/null &
+SUDO_LOOP_PID=$!
+trap 'kill $SUDO_LOOP_PID 2>/dev/null || true' EXIT
+
+info "Deploying core configs and KDE bridges..."
+# This script deploys Python bridges and mock hyprctl which the shell needs
+bash "$BUNDLE_DIR/scripts/03-deploy-configs.sh" || die "Config deployment failed."
+
+info "Building Caelestia Shell UI..."
+bash "$BUNDLE_DIR/scripts/08-build-shell.sh" || die "Shell build failed."
+
+echo
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${GREEN}  Update Completed Successfully!${RST}"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo
+info "The core shell and bridge scripts have been updated without touching your personal KDE settings."
+echo
+echo -e "${YELLOW}To apply the changes, please restart the shell by running:${RST}"
+echo -e "  caelestia shell -k && caelestia shell"
+echo
