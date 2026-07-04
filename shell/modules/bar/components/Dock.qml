@@ -26,6 +26,7 @@ Item {
     property int modelUpdateTrigger: 0
 
     property var launchingApps: ({})
+    property bool isDragging: false
 
     ListModel { id: dockModel }
 
@@ -234,6 +235,7 @@ Item {
                         
                         onPressed: mouse => {
                             held = true;
+                            root.isDragging = true;
                             stateLayer.press(mouse.x, mouse.y);
                         }
                         
@@ -270,9 +272,17 @@ Item {
                         
                         onReleased: {
                             held = false;
+                            root.isDragging = false;
                             delegateItem.x = 0;
                             delegateItem.y = 0;
                             root.saveNewOrder();
+                        }
+                        
+                        onCanceled: {
+                            held = false;
+                            root.isDragging = false;
+                            delegateItem.x = 0;
+                            delegateItem.y = 0;
                         }
                     }
 
@@ -439,6 +449,7 @@ Item {
     onModelDataArrayChanged: currentOrder = [...modelDataArray]
 
     function rebuildModel(): void {
+        if (root.isDragging) return;
         const apps = [];
 
         const pinnedIds = GlobalConfig.launcher.favouriteApps || [];
