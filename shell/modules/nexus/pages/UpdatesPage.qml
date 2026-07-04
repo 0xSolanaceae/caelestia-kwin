@@ -32,6 +32,9 @@ PageBase {
 
     property string updateLogs: ""
     property bool updateRunning: false
+    property real updateProgress: 0.0
+    property string updateStatus: ""
+    property bool logsExpanded: false
 
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
@@ -141,15 +144,45 @@ PageBase {
                     enabled: !root.updateRunning && UpdateChecker.hasUpdate
                     onClicked: {
                         root.updateLogs = "";
+                        root.updateProgress = 0.0;
+                        root.updateStatus = "Starting update...";
                         root.updateRunning = true;
                         updateProcess.running = true;
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    visible: root.updateRunning || root.updateLogs !== ""
+                    spacing: Tokens.spacing.small
+                    
+                    RowLayout {
+                        Layout.fillWidth: true
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: root.updateStatus
+                            color: Colours.palette.m3onSurface
+                            font: Tokens.font.body.medium
+                        }
+                        IconButton {
+                            icon: root.logsExpanded ? "expand_less" : "expand_more"
+                            onClicked: root.logsExpanded = !root.logsExpanded
+                            tooltip: root.logsExpanded ? "Hide Logs" : "Show Logs"
+                        }
+                    }
+
+                    StyledProgressBar {
+                        Layout.fillWidth: true
+                        value: root.updateProgress
+                        visible: !root.indeterminate
+                        indeterminate: root.updateProgress === 0.0 && root.updateRunning
                     }
                 }
 
                 StyledRect {
                     Layout.fillWidth: true
                     implicitHeight: 250
-                    visible: root.updateLogs !== "" || root.updateRunning
+                    visible: root.logsExpanded && (root.updateLogs !== "" || root.updateRunning)
                     color: Colours.tPalette.m3surfaceContainerLowest
                     radius: Tokens.rounding.small
                     clip: true
@@ -185,6 +218,23 @@ PageBase {
             stdout: StdioCollector {
                 onTextChanged: {
                     root.updateLogs = text;
+                    const lines = text.split("\n");
+                    for (let i = lines.length - 1; i >= 0; i--) {
+                        if (lines[i].startsWith("PROGRESS: ")) {
+                            const pText = lines[i].substring(10);
+                            if (pText.startsWith("done")) {
+                                root.updateProgress = 1.0;
+                                root.updateStatus = "Done!";
+                            } else {
+                                const match = pText.match(/^(\d+)\/(\d+): (.+)$/);
+                                if (match) {
+                                    root.updateProgress = parseInt(match[1]) / parseInt(match[2]);
+                                    root.updateStatus = match[3];
+                                }
+                            }
+                            break;
+                        }
+                    }
                 }
             }
             stderr: StdioCollector {
@@ -210,7 +260,7 @@ PageBase {
 
         Process {
             id: restartProcess
-            command: ["bash", "-c", "caelestia shell -k; sleep 1; caelestia shell -d >/dev/null 2>&1 &"]
+            command: ["bash", "-c", "nohup sh -c 'sleep 2; caelestia shell -d' >/dev/null 2>&1 & caelestia shell -k"]
         }
     }
 }

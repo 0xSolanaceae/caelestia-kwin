@@ -254,13 +254,16 @@ fi
 
 # Install systemd service
 if [ -d "$BUNDLE_DIR/src/systemd" ]; then
-    cp "$BUNDLE_DIR/src/systemd/qs-kwin-bridge.service" ~/.config/systemd/user/
+    cp "$BUNDLE_DIR/src/systemd/qs-kwin-bridge.service" ~/.config/systemd/user/ 2>/dev/null || true
+    cp "$BUNDLE_DIR/src/systemd/caelestia-update-checker.service" ~/.config/systemd/user/ 2>/dev/null || true
+    cp "$BUNDLE_DIR/src/systemd/caelestia-update-checker.timer" ~/.config/systemd/user/ 2>/dev/null || true
 fi
 
 # Enable systemd service (silently unmask if previously masked)
 systemctl --user unmask qs-kwin-bridge.service &>/dev/null || true
 systemctl --user daemon-reload
 systemctl --user enable --now qs-kwin-bridge.service &>/dev/null || true
+systemctl --user enable --now caelestia-update-checker.timer &>/dev/null || true
 
 # Load and start KWin script
 qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript ~/.local/share/kwin/scripts/quickshell-kde-bridge/contents/code/main.js quickshell-kde-bridge &>/dev/null || true

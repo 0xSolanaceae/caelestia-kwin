@@ -95,10 +95,4 @@ fi
         }
     }
 
-    Timer {
-        running: GlobalConfig.general.checkUpdates
-        repeat: true
-        interval: 30 * 60 * 1000 // 30 mins
-        onTriggered: root.checkUpdates()
-    }
 }
