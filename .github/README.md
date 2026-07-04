@@ -102,7 +102,8 @@
   <summary><b>💫 Updates</b></summary>
   <br/>
 
-  - Updating is simple, just clone the latest version and run the installer.
+  - Updating is simple, just run `bash update.sh` and select the branch from which you want to update. 
+  - branches: main (stable) and testing (bleeding edge)
   - Shell settings are **not** changed during updates. 
 
 
