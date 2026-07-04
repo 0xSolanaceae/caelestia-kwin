@@ -90,7 +90,7 @@ Singleton {
             params.colors = filters.colors;
 
         const url = buildUrl("/search", params);
-        console.log("Wallhaven search:", url);
+        Logger.log("Wallhaven search:", url);
 
         Requests.get(url, text => {
             try {
@@ -129,7 +129,7 @@ Singleton {
         };
 
         const url = buildUrl("/search", params);
-        console.log("Wallhaven random:", url);
+        Logger.log("Wallhaven random:", url);
 
         Requests.get(url, text => {
             try {
@@ -270,8 +270,8 @@ Singleton {
         downloadProc.tmpPath = tmpPath;
         downloadProc.dstPath = dstPath;
 
-        console.log("Wallhaven: Downloading", wallpaper.path, "to", tmpPath);
-        console.log("Wallhaven: Will move to", dstPath, "(ext:", ext, ")");
+        Logger.log("Wallhaven: Downloading", wallpaper.path, "to", tmpPath);
+        Logger.log("Wallhaven: Will move to", dstPath, "(ext:", ext, ")");
 
         downloadProc.command = ["sh", "-c", "curl -L -s -o '" + tmpPath + "' '" + wallpaper.path + "'"];
         downloadProc.running = true;
@@ -305,7 +305,7 @@ Singleton {
             if (currentWallpaper) {
                 const src = downloadProc.tmpPath;
                 const dst = downloadProc.dstPath;
-                console.log("Wallhaven: Download complete, moving to", dst);
+                Logger.log("Wallhaven: Download complete, moving to", dst);
                 moveProc.source = src;
                 moveProc.destination = dst;
                 moveProc.command = ["sh", "-c", "test -f '" + src + "' && mv '" + src + "' '" + dst + "'"];
@@ -325,7 +325,7 @@ Singleton {
         onExited: code => {
             const id = downloadProc.wallpaperId;
             const dst = downloadProc.dstPath;
-            console.log("Wallhaven: moveProc exited with code", code);
+            Logger.log("Wallhaven: moveProc exited with code", code);
             if (code === 0) {
                 downloadComplete(id, dst);
             } else {

@@ -72,7 +72,7 @@ cmake --build build
 echo -e "${BLUE}[4/5] Compiling QMLTermWidget submodule...${NC}"
 pushd plugin/src/QMLTermWidget
 qmake6 .
-make -j$(nproc)
+make -j"$(nproc)"
 popd
 
 # 5. Clean up hijacked legacy dynamic libraries from /usr/lib

@@ -20,11 +20,11 @@ echo "--------------------------------------------------------"
 echo "[STAGE 2] Building Caelestia..."
 
 # Attempt an incremental build
-if ! (cmake -B build && cmake --build build -j$(nproc)); then
+if ! (cmake -B build && cmake --build build -j"$(nproc)"); then
     echo "[WARNING] Incremental build failed. Performing full clean rebuild..."
     rm -rf build
     cmake -B build
-    cmake --build build -j$(nproc)
+    cmake --build build -j"$(nproc)"
 fi
 
 echo "--------------------------------------------------------"

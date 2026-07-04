@@ -22,7 +22,7 @@ if [[ "$BASE_DISTRO" == "arch" ]]; then
         tmpdir="$(mktemp -d)"
         git clone https://aur.archlinux.org/yay-bin.git "$tmpdir"
         (
-            cd "$tmpdir"
+            cd "$tmpdir" || exit 1
             makepkg -si --noconfirm
         )
         rm -rf "$tmpdir"

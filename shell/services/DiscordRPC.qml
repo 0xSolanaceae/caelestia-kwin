@@ -45,12 +45,12 @@ Item {
         target: DiscordIpc
         function onConnectedChanged() {
             if (DiscordIpc.connected) {
-                console.log("Discord ARPC connected");
+                Logger.log("Discord ARPC connected");
                 root.updatePresence();
             }
         }
         function onErrorOccurred(errorString) {
-            console.log("Discord ARPC error: " + errorString);
+            Logger.log("Discord ARPC error: " + errorString);
         }
     }
 

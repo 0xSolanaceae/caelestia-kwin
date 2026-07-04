@@ -172,7 +172,7 @@ if ! command -v caelestia >/dev/null 2>&1; then
         cd "$tmpdir" || exit 1
         curl -sL "https://github.com/caelestia-dots/cli/releases/download/v1.0.8/caelestia-1.0.8.tar.gz" -o caelestia.tar.gz
         tar -xzf caelestia.tar.gz
-        cd caelestia-1.0.8
+        cd caelestia-1.0.8 || exit 1
         python3 -m build --wheel --no-isolation
         if ! sudo pip3 install dist/*.whl --break-system-packages; then
             pip3 install dist/*.whl --user --break-system-packages

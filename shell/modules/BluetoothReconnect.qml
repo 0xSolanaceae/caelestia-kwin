@@ -1,4 +1,5 @@
 import QtQuick
+import qs.utils
 import Quickshell
 import Quickshell.Bluetooth
 import Caelestia.Config
@@ -33,7 +34,7 @@ Scope {
                     attemptedDevices[device.address] = true;
 
                     if (device.state === BluetoothDeviceState.Disconnected) { // qmllint disable unresolved-type
-                        console.log("[BluetoothReconnect] Reconnecting device on startup:", device.name, device.address);
+                        Logger.log("[BluetoothReconnect] Reconnecting device on startup:", device.name, device.address);
                         device.connected = true;
                     }
                 }

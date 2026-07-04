@@ -36,7 +36,7 @@ PanelWindow {
     signal dismiss()
 
     // Styles
-    property string screenshotDir: "/tmp/caelestia-screenshot"
+    property string screenshotDir: `${Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"}/caelestia-screenshot`
     property color overlayColor: Qt.rgba("#000000".r, "#000000".g, "#000000".b, 1.0 - 0.4)
     property color brightText: true ? Colours.palette.m3onSurface : Colours.palette.m3surface
     property color brightSecondary: true ? Colours.palette.m3secondary : Colours.palette.m3onSecondary

@@ -387,7 +387,7 @@ Item {
         }
 
         function onDownloadComplete(id, path) {
-            console.log("Wallhaven: Wallpaper saved to", path);
+            Logger.log("Wallhaven: Wallpaper saved to", path);
             if (root.selectedWallpaper && root.selectedWallpaper.id === id) {
                 Wallpapers.setWallpaper(path);
                 root.detailPanelOpen = false;

@@ -25,7 +25,7 @@ if [ ! -d "$SHELL_DIR" ]; then
     exit 1
 fi
 
-cd "$SHELL_DIR"
+cd "$SHELL_DIR" || exit 1
 
 info "Configuring CMake..."
 rm -rf build
