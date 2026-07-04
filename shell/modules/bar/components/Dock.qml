@@ -92,24 +92,49 @@ Item {
         property real availableSize: {
             if (!bar) return 9999;
             
-            let reservedEnd = 0;
-            if (currentZone === "left") {
-                // If in left, we must leave room for middle (if it exists) and right
-                reservedEnd = (bar.rightZoneSize || 0) + (bar.middleZoneSize > 0 ? bar.middleZoneSize + Tokens.spacing.medium : 0) + Tokens.spacing.medium;
-            } else if (currentZone === "middle") {
-                // If in middle, we must leave room for right
-                reservedEnd = (bar.rightZoneSize || 0) + Tokens.spacing.medium;
+            const W = bar.isHorizontal ? bar.width : bar.height;
+            const spacing = Tokens.spacing.medium;
+            const pad = bar.vPadding;
+            
+            let otherSize = 0;
+            if (root.parent && root.parent.parent) {
+                const layout = root.parent.parent;
+                for (let i = 0; i < layout.children.length; i++) {
+                    const child = layout.children[i];
+                    if (child !== root.parent && child.visible) {
+                        otherSize += (bar.isHorizontal ? child.implicitWidth : child.implicitHeight) + spacing;
+                    }
+                }
             }
             
-            reservedEnd += bar.vPadding;
-
-            if (bar.isHorizontal) {
-                let gx = root.mapToItem(bar, 0, 0).x;
-                return Math.max(0, bar.width - gx - reservedEnd);
+            let result = 0;
+            if (currentZone === "left") {
+                const M = bar.middleZoneSize;
+                const R = bar.rightZoneSize;
+                let maxZone = W - 2*pad;
+                if (M > 0) maxZone = W / 2 - M / 2 - spacing - pad;
+                else if (R > 0) maxZone = W - R - spacing - 2*pad;
+                
+                result = Math.max(0, maxZone - otherSize);
+            } else if (currentZone === "right") {
+                const L = bar.leftZoneSize;
+                const M = bar.middleZoneSize;
+                let maxZone = W - 2*pad;
+                if (M > 0) maxZone = W / 2 - M / 2 - spacing - pad;
+                else if (L > 0) maxZone = W - L - spacing - 2*pad;
+                
+                result = Math.max(0, maxZone - otherSize);
             } else {
-                let gy = root.mapToItem(bar, 0, 0).y;
-                return Math.max(0, bar.height - gy - reservedEnd);
+                const L = bar.leftZoneSize;
+                const R = bar.rightZoneSize;
+                let maxZone = W - 2*pad;
+                if (L > 0) maxZone -= (L + spacing);
+                if (R > 0) maxZone -= (R + spacing);
+                
+                result = Math.max(0, maxZone - otherSize);
             }
+            
+            return result;
         }
 
         property real itemSize: Tokens.sizes.bar.innerWidth * 0.8
