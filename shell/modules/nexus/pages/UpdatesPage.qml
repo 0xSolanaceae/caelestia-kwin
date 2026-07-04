@@ -173,9 +173,6 @@ PageBase {
                 }
             }
         }
-    }
-
-    Item {
         Process {
             id: updateProcess
             command: ["bash", "-c", `${Paths.absolutePath("~/.local/bin/caelestia-update")} ${UpdateChecker.currentBranch}`]
