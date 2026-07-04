@@ -1,0 +1,211 @@
+pragma ComponentBehavior: Bound
+
+import QtQuick
+import QtQuick.Layouts
+import Quickshell.Io
+import Caelestia
+import Caelestia.Config
+import qs.components
+import qs.components.controls
+import qs.components.containers
+import qs.services
+import qs.modules.nexus.common
+import qs.utils
+
+PageBase {
+    id: root
+    
+    title: qsTr("Updates")
+
+    readonly property list<var> branchItems: UpdateChecker.availableBranches.map(b => ({
+        label: b,
+        value: b,
+        icon: "call_split"
+    }))
+
+    readonly property var activeBranchItem: branchItems.find(i => i.value === UpdateChecker.currentBranch) || branchItems[0]
+
+    property string updateLogs: ""
+    property bool updateRunning: false
+
+    ColumnLayout {
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        width: root.cappedWidth
+        spacing: Tokens.spacing.extraSmall / 2
+
+        // Status Banner
+        ConnectedRect {
+            first: true
+            last: true
+            Layout.fillWidth: true
+            implicitHeight: Tokens.padding.extraLarge * 4
+
+            ColumnLayout {
+                anchors.centerIn: parent
+                spacing: Tokens.spacing.small
+
+                MaterialIcon {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: UpdateChecker.hasUpdate ? "update" : "check_circle"
+                    color: UpdateChecker.hasUpdate ? Colours.palette.m3primary : Colours.palette.m3outlineVariant
+                    fontStyle: Tokens.font.icon.extraLarge
+                }
+
+                StyledText {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: UpdateChecker.hasUpdate 
+                        ? qsTr("%1 new commits on %2").arg(UpdateChecker.pendingCount).arg(UpdateChecker.currentBranch)
+                        : qsTr("You're all caught up!")
+                    color: UpdateChecker.hasUpdate ? Colours.palette.m3primary : Colours.palette.m3outlineVariant
+                    font: Tokens.font.title.medium
+                }
+                
+                IconTextButton {
+                    Layout.alignment: Qt.AlignHCenter
+                    visible: !UpdateChecker.hasUpdate
+                    text: qsTr("Check again")
+                    type: TextButton.Tonal
+                    icon: "refresh"
+                    onClicked: UpdateChecker.checkUpdates()
+                }
+            }
+        }
+
+        SectionHeader {
+            text: qsTr("Options")
+        }
+
+        SelectRow {
+            first: true
+            last: true
+            label: qsTr("Update branch")
+            subtext: qsTr("Currently tracking branch: %1").arg(UpdateChecker.currentBranch)
+            menuItems: root.branchItems
+            active: root.activeBranchItem
+            onSelected: item => {
+                UpdateChecker.checkUpdates(item.value);
+            }
+        }
+
+        SectionHeader {
+            text: qsTr("Latest Changes")
+            visible: UpdateChecker.commits.length > 0
+        }
+
+        Repeater {
+            model: UpdateChecker.commits
+            delegate: CommitRow {
+                first: index === 0
+                last: index === UpdateChecker.commits.length - 1
+                hash: modelData.hash
+                subject: modelData.subject
+                author: modelData.author
+                date: modelData.date
+            }
+        }
+
+        SectionHeader {
+            text: qsTr("Install Update")
+            visible: UpdateChecker.hasUpdate || root.updateRunning || root.updateLogs !== ""
+        }
+
+        ConnectedRect {
+            first: true
+            last: true
+            Layout.fillWidth: true
+            visible: UpdateChecker.hasUpdate || root.updateRunning || root.updateLogs !== ""
+            implicitHeight: logsContainer.implicitHeight + Tokens.padding.largeIncreased * 2
+
+            ColumnLayout {
+                id: logsContainer
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: Tokens.padding.largeIncreased
+                spacing: Tokens.spacing.medium
+
+                IconTextButton {
+                    Layout.fillWidth: true
+                    text: root.updateRunning ? qsTr("Updating...") : qsTr("Install & Restart Shell")
+                    type: TextButton.Primary
+                    icon: root.updateRunning ? "hourglass_empty" : "system_update_alt"
+                    enabled: !root.updateRunning && UpdateChecker.hasUpdate
+                    onClicked: {
+                        root.updateLogs = "";
+                        root.updateRunning = true;
+                        updateProcess.running = true;
+                    }
+                }
+
+                StyledRect {
+                    Layout.fillWidth: true
+                    implicitHeight: 250
+                    visible: root.updateLogs !== "" || root.updateRunning
+                    color: Colours.tPalette.m3surfaceContainerLowest
+                    radius: Tokens.rounding.small
+                    clip: true
+
+                    Flickable {
+                        anchors.fill: parent
+                        anchors.margins: Tokens.padding.medium
+                        contentHeight: logText.implicitHeight
+                        contentWidth: width
+
+                        onContentHeightChanged: {
+                            if (contentHeight > height) {
+                                contentY = contentHeight - height;
+                            }
+                        }
+
+                        StyledText {
+                            id: logText
+                            width: parent.width
+                            text: root.updateLogs
+                            color: Colours.palette.m3onSurfaceVariant
+                            font: Tokens.font.body.small
+                            wrapMode: Text.Wrap
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Item {
+        Process {
+            id: updateProcess
+            command: ["bash", "-c", `${Paths.absolutePath("~/.local/bin/caelestia-update")} ${UpdateChecker.currentBranch}`]
+            
+            stdout: StdioCollector {
+                onTextChanged: {
+                    root.updateLogs = text;
+                }
+            }
+            stderr: StdioCollector {
+                onTextChanged: {
+                    // Ignore stderr or append, but StdioCollector accumulates on its own.
+                }
+            }
+            
+            onExited: code => {
+                root.updateRunning = false;
+                if (code === 0) {
+                    Toaster.toast(qsTr("Update Successful"), qsTr("The shell has been updated. Restarting..."), "done");
+                    UpdateChecker.loaded = false; // Reset to force re-read
+                    UpdateChecker.checkUpdates();
+                    
+                    // Restart shell automatically
+                    restartProcess.running = true;
+                } else {
+                    Toaster.toast(qsTr("Update Failed"), qsTr("The update script returned error code %1").arg(code), "error");
+                }
+            }
+        }
+
+        Process {
+            id: restartProcess
+            command: ["bash", "-c", "caelestia shell -k; sleep 1; caelestia shell -d >/dev/null 2>&1 &"]
+        }
+    }
+}
