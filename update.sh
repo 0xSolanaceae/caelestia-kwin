@@ -26,11 +26,13 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 info "Fetching remote branches..."
 git fetch origin || warn "Failed to fetch from origin. Network issue?"
 
+STASHED=0
 # Safely stash uncommitted changes to avoid merge conflicts
 if ! git diff-index --quiet HEAD --; then
     warn "You have uncommitted changes in the repository."
     info "Stashing your local changes..."
     git stash -m "Auto-stash before Caelestia update" || die "Failed to stash changes."
+    STASHED=1
 fi
 
 BRANCHES=$(git branch -r | grep -v '\->' | sed 's/.*origin\///')
@@ -50,6 +52,12 @@ git checkout "$BRANCH" || die "Failed to checkout $BRANCH"
 
 info "Pulling latest changes for $BRANCH..."
 git pull origin "$BRANCH" || die "Failed to pull from origin/$BRANCH"
+
+if [ "$STASHED" -eq 1 ]; then
+    echo
+    warn "Your local uncommitted changes were backed up to the git stash to allow a clean update."
+    warn "If you need to recover them, you can manually run 'git stash pop' later."
+fi
 
 
 echo
