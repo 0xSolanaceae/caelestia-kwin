@@ -30,23 +30,25 @@ void KeybindsModel::load() {
     m_initialized = false;
     emit initializedChanged();
 
-    m_process = new QProcess(this);
+    auto* process = new QProcess(this);
+    m_process = process;
     const auto mockPath = QDir::homePath() + "/.local/bin/hyprctl";
-    m_process->setProgram(QFile::exists(mockPath) ? mockPath : "hyprctl"); // In KDE this resolves to the mock ~/.local/bin/hyprctl script
-    m_process->setArguments({"binds", "-j"});
+    process->setProgram(QFile::exists(mockPath) ? mockPath : "hyprctl"); // In KDE this resolves to the mock ~/.local/bin/hyprctl script
+    process->setArguments({"binds", "-j"});
 
-    connect(m_process, &QProcess::finished, this, [this](int exitCode, QProcess::ExitStatus status) {
-        auto* p = m_process;
-        m_process = nullptr; // Clear it out
+    connect(process, &QProcess::finished, this, [this, process](int exitCode, QProcess::ExitStatus status) {
+        if (m_process == process) {
+            m_process = nullptr;
+        }
 
         if (status == QProcess::CrashExit || exitCode != 0) {
             qCWarning(lcKeybinds) << "Failed to fetch keybinds, hyprctl exited with code" << exitCode;
-            p->deleteLater();
+            process->deleteLater();
             return;
         }
 
-        const auto response = p->readAllStandardOutput();
-        p->deleteLater();
+        const auto response = process->readAllStandardOutput();
+        process->deleteLater();
 
         const auto doc = QJsonDocument::fromJson(response);
         if (!doc.isArray()) {
@@ -102,12 +104,12 @@ void KeybindsModel::load() {
         emit loaded();
     });
 
-    connect(m_process, &QProcess::errorOccurred, this, [this](QProcess::ProcessError err) {
+    connect(process, &QProcess::errorOccurred, this, [this, process](QProcess::ProcessError err) {
         qCWarning(lcKeybinds) << "hyprctl process error:" << err;
-        if (m_process) {
-            m_process->deleteLater();
+        if (m_process == process) {
             m_process = nullptr;
         }
+        process->deleteLater();
     });
 
     m_process->start();
