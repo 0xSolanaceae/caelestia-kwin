@@ -172,7 +172,7 @@ in
 
     meta = {
       description = "A very segsy desktop shell";
-      homepage = "https://github.com/caelestia-dots/shell";
+      homepage = "https://github.com/ladybug-me/caelestia-dots-kde";
       license = lib.licenses.gpl3Only;
       mainProgram = "caelestia-shell";
     };
