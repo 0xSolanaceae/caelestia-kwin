@@ -22,12 +22,14 @@ MouseArea {
     implicitHeight: Tokens.font.body.small.pointSize * 2
 
     onClicked: event => {
-        if (event.button === Qt.RightButton && !Config.bar.popouts.tray && root.popouts) {
-            root.popouts.currentName = `traymenu${root.trayIndex}`;
-            root.popouts.currentCenter = root.isHorizontal
-                ? root.mapToItem(null, root.implicitWidth / 2, 0).x
-                : root.mapToItem(null, 0, root.implicitHeight / 2).y;
-            root.popouts.hasCurrent = true;
+        if (event.button === Qt.RightButton) {
+            if (root.popouts) {
+                root.popouts.currentName = `traymenu${root.trayIndex}`;
+                root.popouts.currentCenter = root.isHorizontal
+                    ? root.mapToItem(null, root.implicitWidth / 2, 0).x
+                    : root.mapToItem(null, 0, root.implicitHeight / 2).y;
+                root.popouts.hasCurrent = true;
+            }
         } else {
             modelData.activate();
         }
