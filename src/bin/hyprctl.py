@@ -245,7 +245,8 @@ if __name__ == "__main__":
         print('{"id": 1}')
     elif len(sys.argv) >= 3 and sys.argv[1] == "clients" and sys.argv[2] == "-j":
         try:
-            with open('/tmp/qs_kwin_windows.json', 'r') as f:
+            runtime_dir = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+            with open(os.path.join(runtime_dir, 'qs_kwin_windows.json'), 'r') as f:
                 print(f.read())
         except Exception:
             print("[]")

@@ -8,7 +8,7 @@ if(NOT DEFINED VERSION)
         ERROR_QUIET
     )
 
-    if("${VERSION}" STREQUAL "")
+    if("${VERSION}" STREQUAL "" OR "${VERSION}" STREQUAL "rolling")
         set(VERSION "v2.0.1")
     endif()
 endif()

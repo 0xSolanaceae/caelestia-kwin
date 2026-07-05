@@ -21,8 +21,8 @@ HyprlandState::HyprlandState(QObject* parent)
     if (his.isEmpty()) {
         qCWarning(lcHyprState) << "$HYPRLAND_INSTANCE_SIGNATURE is unset. Using KDE fallback bridge.";
         m_kwinWatcher = new QFileSystemWatcher(this);
-        if (QFile::exists("/tmp/qs_kwin_windows.json")) {
-            m_kwinWatcher->addPath("/tmp/qs_kwin_windows.json");
+        if (QFile::exists(qEnvironmentVariable("XDG_RUNTIME_DIR", "/tmp") + "/qs_kwin_windows.json")) {
+            m_kwinWatcher->addPath(qEnvironmentVariable("XDG_RUNTIME_DIR", "/tmp") + "/qs_kwin_windows.json");
         }
         connect(m_kwinWatcher, &QFileSystemWatcher::fileChanged, this, [this]() {
             updateWindowList();
@@ -76,7 +76,7 @@ void HyprlandState::updateAll() {
 
 void HyprlandState::updateWindowList() {
     if (m_kwinWatcher) {
-        QFile f("/tmp/qs_kwin_windows.json");
+        QFile f(qEnvironmentVariable("XDG_RUNTIME_DIR", "/tmp") + "/qs_kwin_windows.json");
         if (f.open(QIODevice::ReadOnly)) {
             const auto doc = QJsonDocument::fromJson(f.readAll());
             const auto clients = doc.array();

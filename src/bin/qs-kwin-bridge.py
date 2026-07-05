@@ -5,7 +5,11 @@ import dbus.mainloop.glib
 from gi.repository import GLib
 import os, sys, json, subprocess
 
-STATE_FILE = '/tmp/qs_kwin_windows.json'
+RUNTIME_DIR = os.environ.get('XDG_RUNTIME_DIR', '/tmp')
+STATE_FILE = os.path.join(RUNTIME_DIR, 'qs_kwin_windows.json')
+WORKSPACES_FILE = os.path.join(RUNTIME_DIR, 'qs_kwin_workspaces.json')
+ACTIVEWORKSPACE_FILE = os.path.join(RUNTIME_DIR, 'qs_kwin_activeworkspace.json')
+MONITORS_FILE = os.path.join(RUNTIME_DIR, 'qs_kwin_monitors.json')
 KWIN_SCRIPT_PATH = os.path.expanduser(
     "~/.local/share/kwin/scripts/quickshell-kde-bridge/contents/code/main.js"
 )
@@ -54,6 +58,76 @@ class QSKWinBridge(dbus.service.Object):
             pass
         # Print only valid JSON lines — no debug output to stdout
         print(self.windows_json, flush=True)
+
+    @dbus.service.method("org.kde.qs.bridge", in_signature='s', out_signature='')
+    def updateWorkspaces(self, ws_json):
+        try:
+            json.loads(str(ws_json))
+            with open(WORKSPACES_FILE, 'w') as f:
+                f.write(str(ws_json))
+        except Exception:
+            pass
+
+    @dbus.service.method("org.kde.qs.bridge", in_signature='s', out_signature='')
+    def updateActiveWorkspace(self, id_json):
+        try:
+            json.loads(str(id_json))
+            with open(ACTIVEWORKSPACE_FILE, 'w') as f:
+                f.write(str(id_json))
+        except Exception:
+            pass
+
+    @dbus.service.method("org.kde.qs.bridge", in_signature='s', out_signature='')
+    def triggerMonitorsUpdate(self, _dummy):
+        try:
+            out = subprocess.check_output(["kscreen-doctor", "-j"], text=True)
+            k_data = json.loads(out)
+            monitors = []
+            for o in k_data.get("outputs", []):
+                if not o.get("enabled", False): continue
+                mode = next((m for m in o.get("modes", []) if m["id"] == o.get("currentModeId")), None)
+                w = mode["size"]["width"] if mode else 1920
+                h = mode["size"]["height"] if mode else 1080
+                rr = mode["refreshRate"] if mode else 60.0
+                monitors.append({
+                    "id": o.get("id", 0),
+                    "name": o.get("name", "Unknown"),
+                    "description": o.get("name", "Unknown"),
+                    "make": "", "model": "", "serial": "", "class": "",
+                    "width": w,
+                    "height": h,
+                    "refreshRate": rr,
+                    "x": o.get("pos", {}).get("x", 0),
+                    "y": o.get("pos", {}).get("y", 0),
+                    "activeWorkspace": {"id": 1, "name": "1"},
+                    "specialWorkspace": {"id": 0, "name": ""},
+                    "reserved": [0,0,0,0],
+                    "scale": o.get("scale", 1.0),
+                    "transform": 0,
+                    "focused": False,
+                    "dpmsStatus": True,
+                    "vrr": False,
+                    "solitary": "",
+                    "active": True
+                })
+            try:
+                active_output = subprocess.check_output(["qdbus6", "org.kde.KWin", "/KWin", "org.kde.KWin.activeOutputName"], text=True).strip()
+            except Exception:
+                active_output = None
+                
+            focused_set = False
+            for m in monitors:
+                if active_output and m["name"] == active_output:
+                    m["focused"] = True
+                    focused_set = True
+                    
+            if monitors and not focused_set:
+                monitors[0]["focused"] = True
+                
+            with open(MONITORS_FILE, 'w') as f:
+                f.write(json.dumps(monitors))
+        except Exception:
+            pass
 
 dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 session_bus = dbus.SessionBus()
