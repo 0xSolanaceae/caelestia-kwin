@@ -9,7 +9,7 @@ if(NOT DEFINED VERSION)
     )
 
     if("${VERSION}" STREQUAL "")
-        set(VERSION "v1.0.0")
+        set(VERSION "v2.0.1")
     endif()
 endif()
 
