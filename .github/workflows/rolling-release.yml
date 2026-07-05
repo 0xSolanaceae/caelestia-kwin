@@ -21,13 +21,23 @@ jobs:
           git tag -f rolling
           git push -f origin rolling
 
+      - name: Extract Version
+        id: version
+        run: |
+          # Extract the version number (e.g. v2.0.0) from the README.md
+          VERSION=$(grep -oP '(?<=<b>)[vV0-9.]+(?=</b>)' .github/README.md | head -n 1)
+          if [ -z "$VERSION" ]; then
+            VERSION="v2.0.1" # fallback
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
       - name: Create or Update Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cat << 'EOF' > release_notes.md
+          cat << EOF > release_notes.md
 
-          ### 🌠 What's New in v2.0.1
+          ### 🌠 What's New in ${{ env.VERSION }}
 
           - 🌙 **Bar**: MacOS-style app dock, Configurable Panel Position, Material workspace icons, DND toggle, and a live drag-and-drop components editor.
           - ☄️ **Launchers**: Emoji Picker, Clipboard History, Window Switcher, and Hyprland Keybinds.
@@ -43,8 +53,8 @@ jobs:
           EOF
 
           gh release edit rolling \
-            --title "✧ Caelestia ✧ Rolling Release" \
+            --title "🌌 Caelestia KDE • ${{ env.VERSION }} ✨ Rolling Release" \
             --notes-file release_notes.md || \
           gh release create rolling \
-            --title "✧ Caelestia ✧ Rolling Release" \
+            --title "🌌 Caelestia KDE • ${{ env.VERSION }} ✨ Rolling Release" \
             --notes-file release_notes.md
