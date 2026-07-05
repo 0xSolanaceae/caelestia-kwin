@@ -35,6 +35,8 @@ qml_module(caelestia-services
         schemeloader.hpp
         palettemanager.cpp
         palettemanager.hpp
+        dinogame.cpp
+        dinogame.hpp
     LIBRARIES
         Qt::DBus
         Qt::Gui
