@@ -1,0 +1,35 @@
+name: Rolling Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  rolling-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Update Rolling Tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f rolling
+          git push -f origin rolling
+
+      - name: Create or Update Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit rolling \
+            --title "Rolling Release" \
+            --prerelease \
+            --notes "Latest rolling release representing the most recent changes on the main branch." || \
+          gh release create rolling \
+            --title "Rolling Release" \
+            --prerelease \
+            --notes "Latest rolling release representing the most recent changes on the main branch."
