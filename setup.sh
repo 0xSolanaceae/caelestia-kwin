@@ -121,10 +121,118 @@ run_step() {
     done
 }
 
+# Prompt helper: ask a yes/no question with validation and default.
+ask_yes_no() {
+    local prompt="$1"
+    local default="$2"
+    local answer
+
+    while true; do
+        if [[ "$default" == "y" ]]; then
+            read -r -p "$prompt [Y/n]: " answer
+            answer="${answer:-y}"
+        else
+            read -r -p "$prompt [y/N]: " answer
+            answer="${answer:-n}"
+        fi
+
+        case "${answer,,}" in
+            y|yes) return 0 ;;
+            n|no)  return 1 ;;
+            *)
+                echo -e "${YELLOW}Please answer with y or n.${RST}"
+                ;;
+        esac
+    done
+}
+
+# Installer questionnaire: collect all user config choices up front.
+collect_installer_preferences() {
+    while true; do
+        echo
+        echo -e "${CYAN}+------------------------------------------------------------+${RST}"
+        echo -e "${CYAN}|                  Installer Configuration                   |${RST}"
+        echo -e "${CYAN}+------------------------------------------------------------+${RST}"
+        echo
+
+        echo -e "${BOLD}General${RST}"
+        if ask_yes_no "Enable automatic package transaction confirmation" "y"; then
+            export CONFIRM_ARG="--noconfirm"
+        else
+            export CONFIRM_ARG=""
+        fi
+
+        if ask_yes_no "Remove downloaded packages/build cache after successful install" "n"; then
+            export REMOVE_CACHE="true"
+        else
+            export REMOVE_CACHE="false"
+        fi
+
+        echo
+        echo -e "${BOLD}KDE Tiling${RST}"
+        echo -e "${YELLOW}Note: Polonium currently has a known issue where window buttons may not respond.${RST}"
+        if ask_yes_no "Enable Polonium tiling plugin" "n"; then
+            export POLONIUM_ENABLED="true"
+        else
+            export POLONIUM_ENABLED="false"
+        fi
+
+        echo
+        echo -e "${BOLD}Theming${RST}"
+        echo -e "${YELLOW}These options can overwrite parts of your current KDE theme setup.${RST}"
+
+        if ask_yes_no "Apply Darkly theme (Plasma style, window decorations, Kvantum, cursors)" "y"; then
+            export APPLY_DARKLY="true"
+        else
+            export APPLY_DARKLY="false"
+        fi
+
+        if ask_yes_no "Enable Material You colors (kde-material-you-colors daemon)" "y"; then
+            export APPLY_MATERIAL_YOU="true"
+        else
+            export APPLY_MATERIAL_YOU="false"
+        fi
+
+        if ask_yes_no "Apply included custom fonts" "y"; then
+            export APPLY_FONTS="true"
+        else
+            export APPLY_FONTS="false"
+        fi
+
+        echo
+        echo -e "${CYAN}+------------------------------------------------------------+${RST}"
+        echo -e "${CYAN}|                       Configuration                        |${RST}"
+        echo -e "${CYAN}+------------------------------------------------------------+${RST}"
+        printf "  %-44s %s\n" "Base distro:" "$BASE_DISTRO"
+        if [[ -n "$CONFIRM_ARG" ]]; then
+            printf "  %-44s %s\n" "Auto package confirmation:" "enabled"
+        else
+            printf "  %-44s %s\n" "Auto package confirmation:" "disabled"
+        fi
+        printf "  %-44s %s\n" "Remove cache after install:" "$REMOVE_CACHE"
+        printf "  %-44s %s\n" "Enable Polonium:" "$POLONIUM_ENABLED"
+        printf "  %-44s %s\n" "Apply Darkly theme:" "$APPLY_DARKLY"
+        printf "  %-44s %s\n" "Enable Material You colors:" "$APPLY_MATERIAL_YOU"
+        printf "  %-44s %s\n" "Apply included fonts:" "$APPLY_FONTS"
+
+        echo
+        if ask_yes_no "Proceed with these settings" "y"; then
+            break
+        fi
+
+        echo -e "${YELLOW}Restarting configuration wizard...${RST}"
+    done
+}
+
 # ══════════════════════════════════════════════════════════════
 #  BANNER
 # ══════════════════════════════════════════════════════════════
 bash "$SCRIPTS_DIR/00-banner.sh"
+
+# ══════════════════════════════════════════════════════════════
+#  ASK USER PREFERENCES (all prompts up front)
+# ══════════════════════════════════════════════════════════════
+collect_installer_preferences
 
 # ══════════════════════════════════════════════════════════════
 #  ONE-TIME SUDO PASSWORD (kept alive for the full install)
@@ -148,116 +256,32 @@ printf '%s\n' "$SUDO_PASS" | sudo -S sh -c "echo '$USER ALL=(ALL) NOPASSWD: ALL'
 trap 'printf "%s\n" "$SUDO_PASS" | sudo -S rm -f /etc/sudoers.d/caelestia-installer-temp 2>/dev/null' EXIT
 
 # ══════════════════════════════════════════════════════════════
-#  STEP 0 — System update (first thing after auth)
+#  STEP 0 — System update (after configuration + auth)
 # ══════════════════════════════════════════════════════════════
 echo
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
 if [[ "$BASE_DISTRO" == "arch" ]]; then
-    echo -e "${CYAN}  Step 0 — System Update (pacman -Syu)${RST}"
+    echo -e "${CYAN}  Step 0/11 — System Update (pacman -Syu)${RST}"
 else
-    echo -e "${CYAN}  Step 0 — System Update (dnf upgrade)${RST}"
+    echo -e "${CYAN}  Step 0/11 — System Update (dnf upgrade)${RST}"
 fi
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
 echo
 if [[ "$BASE_DISTRO" == "arch" ]]; then
-    info "Running sudo pacman -Syu to bring the system up to date first..."
+    info "Running sudo pacman -Syu now that configuration is complete..."
     if sudo pacman -Syu --noconfirm; then
         ok "System is up to date."
     else
         warn "pacman -Syu encountered errors. Continuing anyway..."
     fi
 else
-    info "Running sudo dnf upgrade --refresh -y to bring the system up to date first..."
+    info "Running sudo dnf upgrade --refresh -y now that configuration is complete..."
     if sudo dnf upgrade --refresh -y; then
         ok "System is up to date."
     else
         warn "dnf upgrade encountered errors. Continuing anyway..."
     fi
 fi
-
-# ══════════════════════════════════════════════════════════════
-#  ASK USER PREFERENCES
-# ══════════════════════════════════════════════════════════════
-echo
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-echo -e "${CYAN}  Installer preferences${RST}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-
-# Polonium tiling WM — ask user
-echo
-echo -e "${YELLOW}Polonium is a KDE tiling window manager plugin.${RST}"
-echo -e "Would you like to enable Polonium tiling? [y/N]: "
-read -r -t 15 polonium_answer || polonium_answer="n"
-case "${polonium_answer,,}" in
-    y|yes)
-        echo -e "\n\033[1;5;31m[WARNING] The close button, maximize and minimize buttons will not respond!\033[0m"
-        echo -e "\033[1;31mYou will have to use Alt+F4 to close apps (bug of Polonium).\033[0m\n"
-        read -r -p "$(echo -e "${YELLOW}Are you sure you still want to enable Polonium? [y/N]: ${RST}")" polonium_confirm
-        case "${polonium_confirm,,}" in
-            y|yes) export POLONIUM_ENABLED="true";  echo "  → Polonium will be ENABLED." ;;
-            *)     export POLONIUM_ENABLED="false"; echo "  → Polonium will be DISABLED." ;;
-        esac
-        ;;
-    *)     export POLONIUM_ENABLED="false"; echo "  → Polonium will be DISABLED (default)." ;;
-esac
-
-# Auto-confirm package installation — ask user
-echo
-echo -e "${YELLOW}Would you like package installation to proceed automatically without confirmation?${RST}"
-if [[ "$BASE_DISTRO" == "arch" ]]; then
-    echo -e "If you select No, you will be prompted to confirm each pacman/yay transaction. [Y/n]: "
-else
-    echo -e "If you select No, you will be prompted to confirm each dnf transaction. [Y/n]: "
-fi
-read -r -t 15 confirm_answer || confirm_answer="y"
-case "${confirm_answer,,}" in
-    n|no) export CONFIRM_ARG="";            echo "  → Manual confirmation ENABLED." ;;
-    *)    export CONFIRM_ARG="--noconfirm"; echo "  → Automated installation ENABLED (--noconfirm)." ;;
-esac
-
-# Clean up downloaded package cache and build files — ask user
-echo
-echo -e "${YELLOW}Would you like to remove the downloaded packages and build files after a successful installation? [y/N]:${RST} "
-read -r -t 15 clean_answer || clean_answer="n"
-case "${clean_answer,,}" in
-    y|yes) export REMOVE_CACHE="true";  echo "  → Downloaded packages/cache will be REMOVED." ;;
-    *)     export REMOVE_CACHE="false"; echo "  → Downloaded packages/cache will be KEPT (default)." ;;
-esac
-
-# Warning about breaking custom setups
-echo
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-echo -e "${CYAN}  Theming Options${RST}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-echo -e "${YELLOW}Applying these settings will overwrite your current theme and may rarely break custom setups.${RST}"
-echo -e "${YELLOW}Make sure to keep the desktop environment clean before proceeding.${RST}"
-
-# Darkly theme — ask user
-echo
-echo -e "${YELLOW}Would you like to apply the Darkly theme (Plasma style, window decorations, Kvantum, Bibata cursors)? [Y/n]:${RST} "
-read -r -t 15 darkly_answer || darkly_answer="y"
-case "${darkly_answer,,}" in
-    n|no) export APPLY_DARKLY="false"; echo "  → Darkly theme will NOT be applied." ;;
-    *)    export APPLY_DARKLY="true";  echo "  → Darkly theme will be APPLIED." ;;
-esac
-
-# Material You colors — ask user
-echo
-echo -e "${YELLOW}Would you like to enable Material You colors (via kde-material-you-colors daemon)? [Y/n]:${RST} "
-read -r -t 15 my_answer || my_answer="y"
-case "${my_answer,,}" in
-    n|no) export APPLY_MATERIAL_YOU="false"; echo "  → Material You colors will NOT be enabled." ;;
-    *)    export APPLY_MATERIAL_YOU="true";  echo "  → Material You colors will be ENABLED." ;;
-esac
-
-# Included fonts — ask user
-echo
-echo -e "${YELLOW}Would you like to apply the included custom fonts (via lookandfeeltool)? [Y/n]:${RST} "
-read -r -t 15 fonts_answer || fonts_answer="y"
-case "${fonts_answer,,}" in
-    n|no) export APPLY_FONTS="false"; echo "  → Custom fonts will NOT be applied." ;;
-    *)    export APPLY_FONTS="true";  echo "  → Custom fonts will be APPLIED." ;;
-esac
 
 # ══════════════════════════════════════════════════════════════
 #  STEP 1 — Ensure prerequisites
