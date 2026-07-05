@@ -108,7 +108,7 @@ Variants {
                         onClicked: {
                             Visibilities.getForActive().screenshot = false;
                             Quickshell.execDetached(["bash", "-c", "spectacle -b -n -f -c 2>/dev/null || " +
-                                "import -window root /tmp/qs-fullshot.png && wl-copy < /tmp/qs-fullshot.png"]);
+                                "import -window root " + Paths.runtimeTemp("fullshot.png") + " && wl-copy < " + Paths.runtimeTemp("fullshot.png")]);
                         }
                     }
 

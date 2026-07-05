@@ -5,6 +5,7 @@ import QtQuick.Controls
 import Qt.labs.synchronizer
 import Quickshell
 import qs.services
+import qs.utils
 
 Singleton {
     id: root
@@ -69,7 +70,7 @@ Singleton {
                 ]
 
             case ScreenshotAction.Action.Search: {
-                const tmpFile = "/tmp/qs-snip-search.png"
+                const tmpFile = Paths.runtimeTemp("snip-search.png")
                 return ["bash", "-c",
                     `set -euo pipefail; ` +
                     `${cropToFile(tmpFile)} && ` +

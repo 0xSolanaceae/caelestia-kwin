@@ -176,7 +176,7 @@ Item {
 
     function handleAgentProcessResult(type, stdout, stderr, cmd) {
         if (type === "screenshot_take") {
-            var convertCmd = "magick /tmp/orion_screenshot.png -resize '1024x1024>' -quality 85 /tmp/orion_screenshot.jpg && base64 /tmp/orion_screenshot.jpg";
+            var convertCmd = `magick ${Paths.runtimeTemp("orion_screenshot.png")} -resize '1024x1024>' -quality 85 ${Paths.runtimeTemp("orion_screenshot.jpg")} && base64 ${Paths.runtimeTemp("orion_screenshot.jpg")}`;
             runAgentCommand(convertCmd, "screenshot_encode");
         } else if (type === "screenshot_encode") {
             var b64 = stdout.replace(/\n/g, "").trim();
@@ -636,7 +636,7 @@ Item {
 
                                     if (toolName === "take_screenshot") {
                                         currentActionText = "Analyzing screen...";
-                                        var screenCmd = 'grim -g "$(hyprctl monitors -j | jq -r \'.[] | select(.focused) | "\\(.x),\\(.y) \\(.width)x\\(.height)"\')" /tmp/orion_screenshot.png';
+                                        var screenCmd = `grim -g "$(hyprctl monitors -j | jq -r '.[] | select(.focused) | \\"\\\\(.x),\\\\(.y) \\\\(.width)x\\\\(.height)\\"')" ${Paths.runtimeTemp("orion_screenshot.png")}`;
                                         runAgentCommand(screenCmd, "screenshot_take");
 
                                     } else if (toolName === "web_search") {

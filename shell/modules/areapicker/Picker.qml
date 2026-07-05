@@ -8,6 +8,7 @@ import Caelestia
 import qs.components
 import qs.components.effects
 import qs.services
+import qs.utils
 
 MouseArea {
     id: root
@@ -74,11 +75,11 @@ MouseArea {
     function save(): void {
         const isSearch = root.loader.searchMode;
         const tmpfile = isSearch
-            ? Qt.resolvedUrl("/tmp/caelestia-search.png")
-            : Qt.resolvedUrl(`/tmp/caelestia-picker-${Quickshell.processId}-${Date.now()}.png`);
+            ? Qt.resolvedUrl("file://" + Paths.runtimeTemp("search.png"))
+            : Qt.resolvedUrl("file://" + Paths.runtimeTemp(`picker-${Quickshell.processId}-${Date.now()}.png`));
         CUtils.saveItem(screencopy, tmpfile, Qt.rect(Math.ceil(rsx), Math.ceil(rsy), Math.floor(sw), Math.floor(sh)), path => {
             if (isSearch) {
-                Quickshell.execDetached(["touch", "/tmp/caelestia-search.done"]);
+                Quickshell.execDetached(["touch", Paths.runtimeTemp("search.done")]);
             } else if (root.loader.clipboardOnly) {
                 Quickshell.execDetached(["sh", "-c", "wl-copy --type image/png < " + path]);
                 Quickshell.execDetached(["notify-send", "-a", "caelestia-cli", "-i", path, "Screenshot taken", "Screenshot copied to clipboard"]);
