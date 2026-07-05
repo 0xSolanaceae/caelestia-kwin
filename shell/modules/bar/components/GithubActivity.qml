@@ -225,7 +225,14 @@ PY
                         count: 0
                     });
 
-                const palette = ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"];
+                const rawPalette = ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"];
+                const palette = [
+                    Colours.tPalette.m3surfaceContainerLowest, // 0 counts blends with background
+                    Colours.harmonize(rawPalette[1]),
+                    Colours.harmonize(rawPalette[2]),
+                    Colours.harmonize(rawPalette[3]),
+                    Colours.harmonize(rawPalette[4])
+                ];
                 let max = 1;
                 for (let i = 0; i < window.length; i++) {
                     if (window[i].count > max)
