@@ -263,7 +263,7 @@ if __name__ == "__main__":
         if sys.argv[1] == "dispatch" and len(sys.argv) >= 4:
             cmd = sys.argv[2]
             arg = sys.argv[3]
-            if cmd in ["focuswindow", "closewindow"] and arg.startswith("address:0x"):
+            if cmd in ["focuswindow", "closewindow", "killwindow"] and arg.startswith("address:0x"):
                 internalId = arg[10:]
                 action = "workspace.activeWindow = wins[i];" if cmd == "focuswindow" else "wins[i].closeWindow();"
                 script_content = f"""
@@ -271,6 +271,30 @@ let wins = workspace.windowList();
 for (let i = 0; i < wins.length; ++i) {{
     if (wins[i].internalId && wins[i].internalId.toString() === "{internalId}") {{
         {action}
+        break;
+    }}
+}}
+"""
+                import subprocess, tempfile, os
+                with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.js') as f:
+                    f.write(script_content)
+                    temp_path = f.name
+                subprocess.run(["qdbus6", "org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting.loadScript", temp_path, "qs-action-temp"], capture_output=True)
+                subprocess.run(["qdbus6", "org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting.start"], capture_output=True)
+                subprocess.run(["qdbus6", "org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting.unloadScript", "qs-action-temp"], capture_output=True)
+                os.remove(temp_path)
+            elif cmd == "movetoworkspace" and "," in arg:
+                # Hyprland format: "<workspace-id>,address:0x<internalId>"
+                ws_id, addr = arg.split(",", 1)
+                if addr.startswith("address:0x") and ws_id.strip().lstrip("-").isdigit():
+                    internalId = addr[10:]
+                    desktop_index = int(ws_id.strip()) - 1  # Hyprland 1-indexed -> KWin 0-indexed
+                    script_content = f"""
+let wins = workspace.windowList();
+for (let i = 0; i < wins.length; ++i) {{
+    if (wins[i].internalId && wins[i].internalId.toString() === "{internalId}") {{
+        let d = workspace.desktops[{desktop_index}];
+        if (d) wins[i].desktops = [d];
         break;
     }}
 }}
