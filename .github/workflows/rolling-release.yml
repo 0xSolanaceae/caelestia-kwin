@@ -53,8 +53,12 @@ jobs:
           EOF
 
           gh release edit rolling \
-            --title "🌌 Caelestia KDE • ${{ env.VERSION }} ✨ Rolling Release" \
-            --notes-file release_notes.md || \
+            --title "🌌 Caelestia KDE ✨ Rolling Release" \
+            --notes-file release_notes.md \
+            --prerelease=false \
+            --latest || \
           gh release create rolling \
-            --title "🌌 Caelestia KDE • ${{ env.VERSION }} ✨ Rolling Release" \
-            --notes-file release_notes.md
+            --title "🌌 Caelestia KDE ✨ Rolling Release" \
+            --notes-file release_notes.md \
+            --prerelease=false \
+            --latest
