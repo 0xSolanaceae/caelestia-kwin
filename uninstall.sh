@@ -199,6 +199,13 @@ for svc in qs-kwin-bridge cliphist ydotoold kde-material-you-colors; do
     fi
 done
 
+if systemctl --user is-enabled --quiet "caelestia-update-checker.timer" 2>/dev/null ||
+   systemctl --user is-active  --quiet "caelestia-update-checker.timer" 2>/dev/null; then
+    systemctl --user disable --now "caelestia-update-checker.timer" 2>/dev/null || true
+    systemctl --user disable --now "caelestia-update-checker.service" 2>/dev/null || true
+    ok "Disabled user timer: caelestia-update-checker"
+fi
+
 # Stop and disable keyd (system service)
 if systemctl is-enabled --quiet keyd 2>/dev/null ||
    systemctl is-active  --quiet keyd 2>/dev/null; then
@@ -227,7 +234,9 @@ for svc_file in \
     "$USER_SYSTEMD/qs-kwin-bridge.service" \
     "$USER_SYSTEMD/cliphist.service" \
     "$USER_SYSTEMD/ydotoold.service" \
-    "$USER_SYSTEMD/kde-material-you-colors.service"
+    "$USER_SYSTEMD/kde-material-you-colors.service" \
+    "$USER_SYSTEMD/caelestia-update-checker.service" \
+    "$USER_SYSTEMD/caelestia-update-checker.timer"
 do
     if [[ -f "$svc_file" ]]; then
         rm -f "$svc_file"
@@ -291,7 +300,9 @@ for f in \
     "$HOME/.local/bin/qs-kwin-bridge.py" \
     "$HOME/.local/bin/caelestia-shortcuts" \
     "$HOME/.local/bin/caelestia-record" \
-    "$HOME/.local/bin/ydotoold-wrapper"
+    "$HOME/.local/bin/ydotoold-wrapper" \
+    "$HOME/.local/bin/caelestia-update" \
+    "$HOME/.local/bin/caelestia-check-updates"
 do
     if [[ -f "$f" ]]; then
         rm -f "$f"
