@@ -2,7 +2,7 @@
 
 # ✧ C A E L E S T I A <img src="assets/caelestia.svg" width="35" align="top"> ✧
 
-<p align="center"> <b>v2.0.0</b> </p>
+<p align="center"> <b>v2.0.1</b> </p>
 
 ### A KDE adaptation of the celestial aesthetic
 
@@ -76,7 +76,7 @@
 
   1. **Clone this repository:**
      ```bash
-     git clone https://github.com/ladybug-me/caelestia-dots-kde ~/caelestia-dots-kde
+     git clone -b main --single-branch --depth 1 https://github.com/ladybug-me/caelestia-dots-kde ~/caelestia-dots-kde
      cd ~/caelestia-dots-kde
      ```
   2. **Run the installer:**
@@ -112,7 +112,7 @@
 </details>
 
 <details>
-  <summary><b> 🌠 v2.0.0 new features</b></summary>
+  <summary><b> 🌠 v2.0.1 new features</b></summary>
   <br/>
 
   - 🌙 **Bar**: MacOS-style app dock, Configurable Panel Position, Material workspace icons, DND toggle, and a live drag-and-drop components editor.
@@ -122,6 +122,8 @@
   - 🔭 **Dashboard**: Developer console terminal tab with history and autocomplete.
   - 🪐 **Desktop**: Floating lyrics, Sound visualizer, Shimeji pets, dynamic wallpaper recoloring, and Bezel Mode.
   - 🧠 **Ai**: Added Ai assistant in notification panel with ollama support.
+  - ⏩️ **Performance**: Added custom C++ backend plugins for a faster shell experience.
+  - 🔄 **Updates**: Automatic updates through shell settings.
 
 </details>
 
@@ -219,9 +221,11 @@ Then rebuild the shell by running setup.sh again.
   </br>
 
   - The AI assistant is powered by Ollama.
-  - Check instructions for ollama installation at [Ollama](https://ollama.com/)
-  - Download any model you want by using the command `ollama pull <model name>` 
-  - e.g. `ollama pull gemma4` 
+  - Run `bash ollama_setup.sh` for automatic installation.
+  - Manual:
+      - Check instructions for ollama installation at [Ollama](https://ollama.com/)
+      - Download any model you want by using the command `ollama pull <model name>` 
+      - e.g. `ollama pull gemma4` 
   - **If you want to use cloud models**
      - Open terminal and run `ollama run gemma4:cloud` or anyother model (see [cloud models](https://ollama.com/search?c=cloud) for available models).
      - Sign in to ollama using the link provided in the terminal.

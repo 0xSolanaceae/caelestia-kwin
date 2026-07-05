@@ -4,8 +4,7 @@
 # It checks for updates and sends a notification using notify-send.
 
 REPO="$HOME/.cache/caelestia-update-repo"
-# Assume testing branch since the user uses testing often, or check both.
-BRANCH="testing"
+BRANCH=$(cat ~/.config/quickshell/caelestia/.update_branch 2>/dev/null || echo "main")
 
 _localCommit="$(cat ~/.config/quickshell/caelestia/.current_commit 2>/dev/null)"
 if [ -z "$_localCommit" ]; then
@@ -18,7 +17,12 @@ else
     git -C "$REPO" fetch origin >/dev/null 2>&1
 fi
 
-PENDING=$(git -C "$REPO" log --oneline ${_localCommit}..${BRANCH} 2>/dev/null | wc -l)
+LOCAL_DATE=$(git -C "$REPO" show -s --format=%cI ${_localCommit} 2>/dev/null)
+if [ -n "$LOCAL_DATE" ]; then
+    PENDING=$(git -C "$REPO" log --oneline --since="$LOCAL_DATE" ${_localCommit}..${BRANCH} 2>/dev/null | wc -l)
+else
+    PENDING=$(git -C "$REPO" log --oneline ${_localCommit}..${BRANCH} 2>/dev/null | wc -l)
+fi
 
 if [ "$PENDING" -gt 0 ]; then
     notify-send -u normal -i system-software-update -a "Caelestia Updates" "System Update Available" "$PENDING new commits on $BRANCH branch. Open Updates page to install."

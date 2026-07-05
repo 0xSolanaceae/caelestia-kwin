@@ -27,6 +27,8 @@ Singleton {
         if (branch !== "") currentBranch = branch;
         
         let bashCmd = `
+mkdir -p "$HOME/.config/quickshell/caelestia"
+echo "${currentBranch}" > "$HOME/.config/quickshell/caelestia/.update_branch"
 REPO="$HOME/.cache/caelestia-update-repo"
 if [ ! -d "$REPO" ]; then
     git clone --bare --filter=blob:none https://github.com/ladybug-me/caelestia-dots-kde.git "$REPO" >/dev/null 2>&1
@@ -34,7 +36,12 @@ else
     git -C "$REPO" fetch origin ${currentBranch}:${currentBranch} >/dev/null 2>&1
 fi
 if [ -n "${root._localCommit}" ]; then
-    git -C "$REPO" log --format="%h|%s|%an|%cI" ${root._localCommit}..${currentBranch} 2>/dev/null || echo ""
+    LOCAL_DATE=$(git -C "$REPO" show -s --format=%cI ${root._localCommit} 2>/dev/null)
+    if [ -n "$LOCAL_DATE" ]; then
+        git -C "$REPO" log --format="%h|%s|%an|%cI" --since="$LOCAL_DATE" ${root._localCommit}..${currentBranch} 2>/dev/null || echo ""
+    else
+        git -C "$REPO" log --format="%h|%s|%an|%cI" ${root._localCommit}..${currentBranch} 2>/dev/null || echo ""
+    fi
 else
     echo ""
 fi
@@ -48,14 +55,18 @@ fi
         localCommitProcess.running = true;
     }
 
-    // Process to read local commit
+    // Process to read local commit and saved branch
     Process {
         id: localCommitProcess
         running: true
-        command: ["cat", Paths.absolutePath("~/.config/quickshell/caelestia/.current_commit")]
+        command: ["bash", "-c", "echo \"$(cat ~/.config/quickshell/caelestia/.current_commit 2>/dev/null)|$(cat ~/.config/quickshell/caelestia/.update_branch 2>/dev/null)\""]
         stdout: StdioCollector {
             onStreamFinished: {
-                root._localCommit = text.trim();
+                const parts = text.trim().split("|");
+                root._localCommit = parts[0];
+                if (parts.length > 1 && parts[1] !== "") {
+                    root.currentBranch = parts[1];
+                }
                 root.loaded = true;
                 root.checkUpdates();
             }
