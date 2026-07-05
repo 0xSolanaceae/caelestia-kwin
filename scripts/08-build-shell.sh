@@ -4,35 +4,17 @@ set -uo pipefail
 
 CYAN="\033[0;36m"
 GREEN="\033[0;32m"
+YELLOW="\033[38;5;220m"
 RED="\033[0;31m"
 RST="\033[0m"
 
 info() { echo -e "${CYAN}[INFO]  $*${RST}"; }
 ok()   { echo -e "${GREEN}[OK]    $*${RST}"; }
+warn() { echo -e "${YELLOW}[WARN]  $*${RST}"; }
 err()  { echo -e "${RED}[ERR]   $*${RST}"; }
 
 BUNDLE_DIR="${BUNDLE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 SHELL_DIR="$BUNDLE_DIR/shell"
-
-info "Checking for broken spectacle dependencies..."
-if ! /usr/bin/spectacle -h >/dev/null 2>&1; then
-    if ldd /usr/bin/spectacle 2>/dev/null | grep -q "libopencv_.*\.so\.500 => not found"; then
-        warn "Spectacle is missing OpenCV .500 dependencies. Attempting to fix by symlinking..."
-        
-        INSTALLED_IMGPROC=$(ls /usr/lib/libopencv_imgproc.so.* 2>/dev/null | grep -v "\.500$" | head -n 1 || true)
-        INSTALLED_CORE=$(ls /usr/lib/libopencv_core.so.* 2>/dev/null | grep -v "\.500$" | head -n 1 || true)
-        
-        if [ -n "$INSTALLED_IMGPROC" ]; then
-            sudo ln -sf "$INSTALLED_IMGPROC" /usr/lib/libopencv_imgproc.so.500
-        fi
-        
-        if [ -n "$INSTALLED_CORE" ]; then
-            sudo ln -sf "$INSTALLED_CORE" /usr/lib/libopencv_core.so.500
-        fi
-        
-        ok "Spectacle OpenCV fix applied."
-    fi
-fi
 
 info "Patching Recorder.qml to wait for portal selection..."
 sed -i 's/command: \["pidof", "gpu-screen-recorder"\]/command: \["sh", "-c", "pidof gpu-screen-recorder >\\\/dev\\\/null \&\& test -f $HOME\\\/.local\\\/state\\\/caelestia\\\/record\\\/recording.mp4"\]/g' "$HOME/.local/share/caelestia-shell/services/Recorder.qml" 2>/dev/null || true
@@ -111,6 +93,24 @@ sudo -v || exit 1
 (while true; do sudo -n true; sleep 55; done) 2>/dev/null &
 SUDO_LOOP_PID=$!
 trap 'kill $SUDO_LOOP_PID 2>/dev/null || true' EXIT
+
+info "Checking for broken spectacle dependencies..."
+if ! /usr/bin/spectacle -h >/dev/null 2>&1; then
+    missing_libs=$(ldd /usr/bin/spectacle 2>/dev/null | grep "libopencv_.* => not found" | awk '{print $1}' || true)
+    if [ -n "$missing_libs" ]; then
+        warn "Spectacle is missing OpenCV dependencies. Attempting to fix by symlinking..."
+        for missing in $missing_libs; do
+            base_lib=$(echo "$missing" | grep -o 'libopencv_[^.]*\.so')
+            if [ -n "$base_lib" ]; then
+                installed=$(ls /usr/lib/${base_lib}.* 2>/dev/null | grep -v "$missing$" | head -n 1 || true)
+                if [ -n "$installed" ]; then
+                    sudo ln -sf "$installed" "/usr/lib/$missing"
+                fi
+            fi
+        done
+        ok "Spectacle OpenCV fix applied."
+    fi
+fi
 
 if ! sudo python3 -c '
 import sys, os, glob
