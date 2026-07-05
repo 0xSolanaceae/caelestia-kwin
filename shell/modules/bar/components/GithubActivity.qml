@@ -86,7 +86,15 @@ StyledRect {
                 width: root.cellSize
                 height: root.cellSize
                 shape: MaterialShape.Square
-                color: modelData.color || "#2f2f2f"
+                color: {
+                    if (modelData.color !== undefined) return modelData.color;
+                    if (modelData.intensity !== undefined) {
+                        if (modelData.intensity === 0) return Colours.tPalette.m3surfaceContainerLowest;
+                        let base = Colours.palette.m3primary;
+                        return Qt.rgba(base.r, base.g, base.b, modelData.intensity * 0.25);
+                    }
+                    return "#2f2f2f";
+                }
             }
         }
 
@@ -225,14 +233,6 @@ PY
                         count: 0
                     });
 
-                const rawPalette = ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"];
-                const palette = [
-                    Colours.tPalette.m3surfaceContainerLowest, // 0 counts blends with background
-                    Colours.harmonize(rawPalette[1]),
-                    Colours.harmonize(rawPalette[2]),
-                    Colours.harmonize(rawPalette[3]),
-                    Colours.harmonize(rawPalette[4])
-                ];
                 let max = 1;
                 for (let i = 0; i < window.length; i++) {
                     if (window[i].count > max)
@@ -243,9 +243,9 @@ PY
                     const count = window[i].count;
                     const idx = count === 0 ? 0 : Math.min(4, 1 + Math.floor((count * 4) / max));
                     window[i] = {
-                        date: window[i].date,
-                        count,
-                        color: palette[idx]
+                        intensity: idx,
+                        count: count,
+                        tooltip: `${window[i].date}: ${count} contribution${count !== 1 ? 's' : ''}`
                     };
                 }
 
