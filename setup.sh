@@ -113,7 +113,6 @@ enable_install_awake_guard() {
 }
 
 trap cleanup_install_state EXIT
-
 # -- Pre-flight checks and OS detection -----------------------------------------
 if [ -f /etc/os-release ]; then
     . /etc/os-release
