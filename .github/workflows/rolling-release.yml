@@ -20,7 +20,7 @@ jobs:
           # Extract the version number (e.g. v2.0.0) from the README.md
           VERSION=$(grep -oP '(?<=<b>)[vV0-9.]+(?=</b>)' .github/README.md | head -n 1)
           if [ -z "$VERSION" ]; then
-            VERSION="v2.0.1" # fallback
+            VERSION="v2.0.2" # fallback
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
@@ -30,22 +30,24 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
           # Update AboutPage.qml
-          sed -i -E "s/text: \"v[0-9]+\.[0-9]+\.[0-9]+\"/text: \"${{ env.VERSION }}\"/g" shell/modules/nexus/pages/AboutPage.qml
+          sed -i -E "s/text: \"v[0-9]+\.[0-9]+\.[0-9]+\"/text: \"$VERSION\"/g" shell/modules/nexus/pages/AboutPage.qml
           
           # Update CMakeLists.txt
-          sed -i -E "s/set\(VERSION \"v[0-9]+\.[0-9]+\.[0-9]+\"\)/set(VERSION \"${{ env.VERSION }}\")/g" shell/CMakeLists.txt
+          sed -i -E "s/set\(VERSION \"v[0-9]+\.[0-9]+\.[0-9]+\"\)/set(VERSION \"$VERSION\")/g" shell/CMakeLists.txt
 
           # Update README dropdown
-          sed -i -E "s/<b> 🌠 v[0-9]+\.[0-9]+\.[0-9]+ new features<\/b>/<b> 🌠 ${{ env.VERSION }} new features<\/b>/g" .github/README.md
+          sed -i -E "s/<b> 🌠 v[0-9]+\.[0-9]+\.[0-9]+ new features<\/b>/<b> 🌠 $VERSION new features<\/b>/g" .github/README.md
           
           git add shell/modules/nexus/pages/AboutPage.qml shell/CMakeLists.txt .github/README.md
-          git commit -m "chore: sync version to ${{ env.VERSION }} [skip ci]" || echo "No changes to commit"
+          git commit -m "chore: sync version to $VERSION [skip ci]" || echo "No changes to commit"
           git push origin main
 
       - name: Update Rolling Tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          PREVIOUS_ROLLING=$(git rev-list -n 1 rolling 2>/dev/null || true)
+          echo "PREVIOUS_ROLLING=$PREVIOUS_ROLLING" >> $GITHUB_ENV
           git tag -f rolling
           git push -f origin rolling
 
@@ -53,30 +55,33 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cat << EOF > release_notes.md
+          if [ -n "$PREVIOUS_ROLLING" ]; then
+            git log "$PREVIOUS_ROLLING..HEAD" --no-merges --invert-grep --grep='\[skip ci\]' --pretty='- %s (%h)' > commit_notes.txt
+          else
+            git log -n 15 --no-merges --invert-grep --grep='\[skip ci\]' --pretty='- %s (%h)' > commit_notes.txt
+          fi
 
-          ### 🌠 What's New in ${{ env.VERSION }}
+          {
+            echo "### What's New in $VERSION"
+            echo
 
-          - 🌙 **Bar**: MacOS-style app dock, Configurable Panel Position, Material workspace icons, DND toggle, and a live drag-and-drop components editor.
-          - ☄️ **Launchers**: Emoji Picker, Clipboard History, Window Switcher, and Hyprland Keybinds.
-          - 🌌 **Wallpapers**: GIF/video support with auto-pause, plus Wallhaven integration.
-          - 🎵 **Bad Apple Easter Egg**: A custom shader effect that plays Bad Apple directly through the shell's UI material by masking the background and preserving the shell's native translucent blur and shadow effects.
-          - 🔭 **Dashboard**: Developer console terminal tab with history and autocomplete.
-          - 🪐 **Desktop**: Floating lyrics, Sound visualizer, Shimeji pets, dynamic wallpaper recoloring, and Bezel Mode.
-          - 🧠 **Ai**: Added Ai assistant in notification panel with ollama support.
-          - ⏩️ **Performance**: Added custom C++ backend plugins for a faster shell experience.
-          - 🔄 **Updates**: Automatic updates through shell settings.
+            if [ -s commit_notes.txt ]; then
+              cat commit_notes.txt
+            else
+              echo "- Maintenance release for $VERSION."
+            fi
 
-          *May your desktop always reflect the stars.*
-          EOF
+            echo
+            echo "*May your desktop always reflect the stars.*"
+          } > release_notes.md
 
           gh release edit rolling \
-            --title "🌌 Caelestia KDE ✨ Rolling Release" \
+            --title "Caelestia KDE - Rolling Release" \
             --notes-file release_notes.md \
             --prerelease=false \
             --latest || \
           gh release create rolling \
-            --title "🌌 Caelestia KDE ✨ Rolling Release" \
+            --title "Caelestia KDE - Rolling Release" \
             --notes-file release_notes.md \
             --prerelease=false \
             --latest
