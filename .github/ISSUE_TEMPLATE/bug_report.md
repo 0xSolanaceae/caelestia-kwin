@@ -1,31 +1,37 @@
 ---
 name: Bug report
-about: Create a report to help us improve
-title: ''
-labels: ''
+about: Report a problem in the KDE Plasma port
+title: "[Bug] "
+labels: bug
 assignees: ''
 
 ---
+# Please ensure a duplicate of this issue has not already been reported
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+## Problem
 
-**To Reproduce**
-Steps to reproduce the behavior:
+Describe the issue clearly and concisely.
+
+## Steps to reproduce
+
 1. Go to '...'
 2. Click on '....'
 3. Scroll down to '....'
 4. See error
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+## Expected result
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+Describe what you expected to happen.
 
-**Desktop (please Complete the following information:**
- - Distribution [e.g. CachyOS]
- - Plasma Version [e.g. 6.7]
+## Screenshots
 
-**Additional context**
+Add screenshots if they help explain the problem.
+
+## Environment
+
+- Distribution: [e.g. CachyOS]
+- Plasma version: [e.g. 6.7]
+
+## Additional context
+
 Add any other context about the problem here.

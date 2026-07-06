@@ -1,6 +1,8 @@
+# Pull Request
+
 ## Description
 
-Briefly describe the changes in this PR.
+Briefly describe what this PR changes.
 
 <!--- ONE FEATURE PER PULL REQUEST ONLY -->
 <!--- Don't include personal config defaults or unrelated changes -->
@@ -8,29 +10,33 @@ Briefly describe the changes in this PR.
 ## Type of change
 
 - [ ] Bug fix
-- [ ] New feature (Quickshell widget, KDE setting, etc.)
-- [ ] Configuration improvement
+- [ ] New feature
+- [ ] Configuration change
 - [ ] Documentation update
+- [ ] Refactor / cleanup
 - [ ] Other (please describe)
 
-## What does this change affect?
+## Impact
 
 - [ ] KDE Plasma settings
 - [ ] Quickshell widgets
-- [ ] Installation/deployment scripts
-- [ ] Theme/colors
+- [ ] Installation / deployment scripts
+- [ ] Theme or color system
 - [ ] Other (please describe)
 
 ## Testing
 
-How have you tested these changes? (e.g., "Ran installer on fresh Arch install", "Tested widget reload on existing install", etc.)
+Describe how you tested these changes.
 
-## Is this ready for review?
+## Screenshots
 
-- [ ] Yes, ready to merge
-- [ ] Still in progress / Questions for maintainers
+Add screenshots if they are relevant.
+
+## Review status
+
+- [ ] Ready for review
+- [ ] Work in progress
 
 ## Additional context
 
-Add any other context or screenshots here (especially helpful for widget/UI changes).
-
+Add any other context here, especially for UI or widget changes.
