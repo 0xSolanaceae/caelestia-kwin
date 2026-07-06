@@ -1,22 +1,32 @@
 name: Feature request
-description: Suggest an idea for this project
-labels: ["FEATURE"]
+description: Suggest an improvement or new feature
+labels: ["feature"]
 body:
   - type: markdown
     attributes:
-      value: "**Before suggesting a feature:**\n- Please search in [existing issues](https://github.com/ladybug-me/caelestia-dots-kde/issues?q=is%3Aissue) to avoid duplicates\n- This is a **KDE Plasma port**. For Hyprland features, see [caelestia-dots/caelestia](https://github.com/caelestia-dots/caelestia)\n- Please write in **English**"
+      value: |
+        Before suggesting a feature, please search [existing issues](https://github.com/ladybug-me/caelestia-dots-kde/issues?q=is%3Aissue) to avoid duplicates.
+
+        This repository is a **KDE Plasma port**. For Hyprland features, use [caelestia-dots/caelestia](https://github.com/caelestia-dots/caelestia).
+
+        Please write in English.
 
   - type: textarea
     attributes:
-      label: "What would you like to be added?"
-      description: "Can be a suggestion for an existing feature. You can suggest a widget, minor user interaction changes.. whatever."
+      label: Proposal
+      description: What would you like to add or change?
+      placeholder: A widget, setting, workflow improvement, or other change.
+    validations:
+      required: true
 
   - type: textarea
     attributes:
-      label: "How will it help?"
-      description: "It's helpful to include examples (like in your use case)."
+      label: Use case
+      description: Explain why this would be useful. Include your workflow if relevant.
+      placeholder: Describe the problem this feature would solve.
 
   - type: textarea
     attributes:
-      label: "Extra info"
-      description: "If you want a new widget, a pic of the inspiration (if available) would be awesome."
+      label: Additional context
+      description: Add links, screenshots, or references if they help explain the request.
+      placeholder: Mockups, examples, or other notes.
