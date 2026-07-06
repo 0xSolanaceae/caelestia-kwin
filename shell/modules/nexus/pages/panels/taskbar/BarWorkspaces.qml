@@ -75,11 +75,7 @@ PageBase {
             onMoved: v => GlobalConfig.bar.workspaces.maxWindowIcons = v
         }
 
-        ToggleRow {
-            text: qsTr("Monitor center")
-            checked: Config.bar.workspaces.monitorCenter
-            onToggled: GlobalConfig.bar.workspaces.monitorCenter = checked
-        }
+
 
         ToggleRow {
             last: true

@@ -55,13 +55,7 @@ PageBase {
             }
         }
 
-        ToggleRow {
-            Layout.fillWidth: true
-            text: qsTr("Monitor center")
-            subtext: qsTr("Center the dock relative to the physical monitor")
-            checked: Config.bar.dock.monitorCenter
-            onToggled: GlobalConfig.bar.dock.monitorCenter = checked
-        }
+
 
         StepperRow {
             Layout.fillWidth: true
