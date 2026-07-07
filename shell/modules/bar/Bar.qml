@@ -19,6 +19,8 @@ Item {
     required property BarPopouts.Wrapper popouts
     required property bool fullscreen
     readonly property int vPadding: Tokens.padding.large
+    readonly property real barScale: Math.max(0.6, Config.bar.scale || 1.0)
+    readonly property int thickness: Math.round(Tokens.sizes.bar.innerWidth * barScale)
 
     readonly property bool isHorizontal: Config.bar.position === "top" || Config.bar.position === "bottom"
     readonly property real leftZoneSize: isHorizontal ? leftLayout.implicitWidth : leftLayout.implicitHeight

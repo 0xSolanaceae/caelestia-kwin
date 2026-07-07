@@ -18,6 +18,7 @@ Item {
     required property var bar
     required property ShellScreen screen
     required property bool fullscreen
+    readonly property int barThickness: bar.thickness
     
     StyledClippingRect {
         id: container
@@ -65,8 +66,8 @@ Item {
 
         readonly property bool isHorizontal: Config.bar.position === "top" || Config.bar.position === "bottom"
 
-        implicitWidth: isHorizontal ? (layout.implicitWidth + Tokens.padding.small) : Tokens.sizes.bar.innerWidth
-        implicitHeight: isHorizontal ? Tokens.sizes.bar.innerWidth : (layout.implicitHeight + Tokens.padding.small)
+        implicitWidth: isHorizontal ? (layout.implicitWidth + Tokens.padding.small) : barThickness
+        implicitHeight: isHorizontal ? barThickness : (layout.implicitHeight + Tokens.padding.small)
 
         color: Colours.tPalette.m3surfaceContainer
         radius: Tokens.rounding.full

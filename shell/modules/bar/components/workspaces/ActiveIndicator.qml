@@ -22,6 +22,7 @@ StyledRect {
     }
 
     readonly property bool isHorizontal: Config.bar.position === "top" || Config.bar.position === "bottom"
+    readonly property int barThickness: Math.round(Tokens.sizes.bar.innerWidth * Math.max(0.6, Config.bar.scale || 1.0))
 
     property var currentItem: workspaces.count > 0 ? workspaces.itemAt(currentWsIdx) : null
     property real leading: currentItem ? (isHorizontal ? currentItem.x : currentItem.y) : 0
@@ -51,8 +52,8 @@ StyledRect {
 
     x: isHorizontal ? offset + mask.x : 0
     y: isHorizontal ? 0 : offset + mask.y
-    implicitWidth: isHorizontal ? size : Tokens.sizes.bar.innerWidth - Tokens.padding.small
-    implicitHeight: isHorizontal ? Tokens.sizes.bar.innerWidth - Tokens.padding.small : size
+    implicitWidth: isHorizontal ? size : barThickness - Tokens.padding.small
+    implicitHeight: isHorizontal ? barThickness - Tokens.padding.small : size
     radius: Tokens.rounding.full
     color: Colours.palette.m3primary
 

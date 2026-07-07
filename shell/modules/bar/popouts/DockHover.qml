@@ -18,6 +18,7 @@ StyledRect {
         if (!model) return null;
         return Players.list.find(p => p.identity.toLowerCase().includes(model.appClass.toLowerCase()) || (model.id && p.identity.toLowerCase().includes(model.id.toLowerCase().replace(".desktop", "")))) || null;
     }
+    readonly property int previewWidth: Math.round(Tokens.sizes.bar.windowPreviewSize * Math.max(0.5, Config.bar.previewScale || 1.0))
 
     radius: Tokens.rounding.medium
     color: Colours.tPalette.m3surfaceContainer
@@ -68,7 +69,7 @@ StyledRect {
                 required property var modelData
                 
                 Layout.fillWidth: true
-                Layout.minimumWidth: Tokens.sizes.bar.windowPreviewSize || 200
+                Layout.minimumWidth: previewWidth || 200
                 implicitHeight: itemLayout.implicitHeight + Tokens.padding.small * 2
                 
                 radius: Tokens.rounding.small

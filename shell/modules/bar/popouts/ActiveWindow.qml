@@ -22,6 +22,7 @@ Item {
         if (hr >= 17 && hr < 20) return Qt.resolvedUrl("../../../assets/evening.gif");
         return Qt.resolvedUrl("../../../assets/night.gif");
     }
+    readonly property int previewSize: Math.round(Tokens.sizes.bar.windowPreviewSize * Math.max(0.5, Config.bar.previewScale || 1.0))
 
     Column {
         id: child
@@ -40,8 +41,8 @@ Item {
                 source: root.gifPath
                 fillMode: root.gifPath.includes("morning.gif") ? Image.PreserveAspectFit : Image.PreserveAspectCrop
                 
-                width: Tokens.sizes.bar.windowPreviewSize
-                height: Tokens.sizes.bar.windowPreviewSize
+                width: previewSize
+                height: previewSize
             }
         }
     }

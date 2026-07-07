@@ -21,10 +21,11 @@ StyledRect {
     property bool pinned: false
     property var popouts
     readonly property bool isHorizontal: Config.bar.position === "top" || Config.bar.position === "bottom"
+    readonly property int barThickness: Math.round(Tokens.sizes.bar.innerWidth * Math.max(0.6, Config.bar.scale || 1.0))
 
     readonly property real nonAnimHeight: {
         if (isHorizontal)
-            return Tokens.sizes.bar.innerWidth;
+            return barThickness;
         if (!Config.bar.tray.compact)
             return layout.implicitHeight + padding * 2;
         return (expanded ? expandIcon.implicitHeight + layout.implicitHeight + spacing : expandIcon.implicitHeight) + padding * 2;
@@ -32,7 +33,7 @@ StyledRect {
 
     readonly property real nonAnimWidth: {
         if (!isHorizontal)
-            return Tokens.sizes.bar.innerWidth;
+            return barThickness;
         if (!Config.bar.tray.compact)
             return layout.implicitWidth + padding * 2;
         return (expanded ? expandIcon.implicitWidth + layout.implicitWidth + spacing : expandIcon.implicitWidth) + padding * 2;
@@ -41,8 +42,8 @@ StyledRect {
     clip: true
     visible: height > 0
 
-    implicitWidth: isHorizontal ? nonAnimWidth : Tokens.sizes.bar.innerWidth
-    implicitHeight: isHorizontal ? Tokens.sizes.bar.innerWidth : nonAnimHeight
+    implicitWidth: isHorizontal ? nonAnimWidth : barThickness
+    implicitHeight: isHorizontal ? barThickness : nonAnimHeight
 
     color: Qt.alpha(Colours.tPalette.m3surfaceContainer, (Config.bar.tray.background && items.count > 0) ? Colours.tPalette.m3surfaceContainer.a : 0)
     radius: Tokens.rounding.full

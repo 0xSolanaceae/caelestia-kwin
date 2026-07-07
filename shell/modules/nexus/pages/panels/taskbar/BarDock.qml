@@ -68,6 +68,17 @@ PageBase {
             onMoved: v => GlobalConfig.bar.dock.iconSize = v
         }
 
+        StepperRow {
+            Layout.fillWidth: true
+            label: qsTr("Preview scale")
+            subtext: qsTr("Scale of dock hover preview popouts")
+            value: Config.bar.previewScale
+            from: 0.5
+            to: 1.6
+            stepSize: 0.05
+            onMoved: v => GlobalConfig.bar.previewScale = v
+        }
+
         ToggleRow {
             Layout.fillWidth: true
             last: true

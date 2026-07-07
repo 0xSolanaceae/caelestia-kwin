@@ -78,7 +78,6 @@ PageBase {
         }
 
         StepperRow {
-            last: true
             label: qsTr("Drag threshold")
             subtext: qsTr("Pixels dragged before the bar reveals")
             value: Config.bar.dragThreshold
@@ -86,6 +85,27 @@ PageBase {
             to: 200
             stepSize: 5
             onMoved: v => GlobalConfig.bar.dragThreshold = v
+        }
+
+        StepperRow {
+            label: qsTr("Bar scale")
+            subtext: qsTr("Scales taskbar thickness and component sizing")
+            value: Config.bar.scale
+            from: 0.6
+            to: 1.6
+            stepSize: 0.05
+            onMoved: v => GlobalConfig.bar.scale = v
+        }
+
+        StepperRow {
+            last: true
+            label: qsTr("Preview scale")
+            subtext: qsTr("Scales taskbar hover previews")
+            value: Config.bar.previewScale
+            from: 0.5
+            to: 1.6
+            stepSize: 0.05
+            onMoved: v => GlobalConfig.bar.previewScale = v
         }
 
         // Components

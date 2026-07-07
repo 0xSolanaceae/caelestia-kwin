@@ -158,6 +158,8 @@ class BarConfig : public ConfigObject {
     Q_OBJECT
     QML_ANONYMOUS
 
+    CONFIG_PROPERTY(qreal, scale, 1.0)
+    CONFIG_PROPERTY(qreal, previewScale, 1.0)
     CONFIG_PROPERTY(bool, persistent, true)
     CONFIG_PROPERTY(bool, showOnHover, true)
     CONFIG_PROPERTY(int, dragThreshold, 20)

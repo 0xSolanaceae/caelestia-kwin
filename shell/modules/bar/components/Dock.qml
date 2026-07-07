@@ -67,7 +67,7 @@ Item {
         root.modelDataArray = newArr;
     }
 
-    readonly property real configuredItemSize: Math.max(16, Math.min(Tokens.sizes.bar.innerWidth, Config.bar.dock.iconSize || 32))
+    readonly property real configuredItemSize: Math.max(16, Math.min(bar.thickness, Config.bar.dock.iconSize || 32))
     StyledRect {
         id: container
 
@@ -77,8 +77,8 @@ Item {
         property int __itemCount: dockModel.count
         property real __computedContentWidth: __itemCount > 0 ? __itemCount * itemSize + (__itemCount - 1) * root.spacing : 0
 
-        implicitWidth: bar.isHorizontal ? (__computedContentWidth + padding * 2) : Tokens.sizes.bar.innerWidth
-        implicitHeight: bar.isHorizontal ? Tokens.sizes.bar.innerWidth : (__computedContentWidth + padding * 2)
+        implicitWidth: bar.isHorizontal ? (__computedContentWidth + padding * 2) : bar.thickness
+        implicitHeight: bar.isHorizontal ? bar.thickness : (__computedContentWidth + padding * 2)
         
         width: bar.isHorizontal ? Math.min(implicitWidth, maxHorizontalSize) : implicitWidth
         height: !bar.isHorizontal ? Math.min(implicitHeight, maxVerticalSize) : implicitHeight

@@ -19,6 +19,7 @@ GridLayout {
 
     readonly property bool isWorkspace: true // Flag for finding workspace children
     readonly property bool isHorizontal: Config.bar.position === "top" || Config.bar.position === "bottom"
+    readonly property int barThickness: Math.round(Tokens.sizes.bar.innerWidth * Math.max(0.6, Config.bar.scale || 1.0))
 
     // Unanimated prop for others to use as reference
     readonly property int size: isHorizontal ? (implicitWidth + (hasWindows ? Tokens.padding.extraSmall : 0)) : (implicitHeight + (hasWindows ? Tokens.padding.extraSmall : 0))
@@ -42,8 +43,8 @@ GridLayout {
         id: indicator
 
         Layout.alignment: isHorizontal ? (Qt.AlignVCenter | Qt.AlignLeft) : (Qt.AlignHCenter | Qt.AlignTop)
-        Layout.preferredWidth: isHorizontal ? (Tokens.sizes.bar.innerWidth - Tokens.padding.small) : -1
-        Layout.preferredHeight: isHorizontal ? -1 : (Tokens.sizes.bar.innerWidth - Tokens.padding.small)
+        Layout.preferredWidth: isHorizontal ? (barThickness - Tokens.padding.small) : -1
+        Layout.preferredHeight: isHorizontal ? -1 : (barThickness - Tokens.padding.small)
 
         asynchronous: true
         sourceComponent: Config.bar.workspaces.useIcon ? iconComponent : textComponent
@@ -143,8 +144,8 @@ GridLayout {
             onActiveChanged: handleActivation()
 
             // Bindings
-            implicitWidth: Tokens.sizes.bar.innerWidth - Tokens.padding.small
-            implicitHeight: Tokens.sizes.bar.innerWidth - Tokens.padding.small
+            implicitWidth: barThickness - Tokens.padding.small
+            implicitHeight: barThickness - Tokens.padding.small
 
             // Initialize state when component is created
             Component.onCompleted: {
@@ -228,8 +229,8 @@ GridLayout {
         Layout.alignment: isHorizontal ? Qt.AlignVCenter : Qt.AlignHCenter
         Layout.fillWidth: isHorizontal && enabled
         Layout.fillHeight: !isHorizontal && enabled
-        Layout.topMargin: isHorizontal ? 0 : -Tokens.sizes.bar.innerWidth / 10
-        Layout.leftMargin: isHorizontal ? -Tokens.sizes.bar.innerWidth / 10 : 0
+        Layout.topMargin: isHorizontal ? 0 : -barThickness / 10
+        Layout.leftMargin: isHorizontal ? -barThickness / 10 : 0
 
         visible: active
         active: false // root.hasWindows disabled in KDE port to prevent Hyprland IPC calls
