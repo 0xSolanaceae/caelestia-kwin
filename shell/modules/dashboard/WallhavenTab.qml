@@ -359,6 +359,7 @@ Item {
                 TextButton {
                     text: root.downloadState === "progress" ? qsTr("Downloading...") : qsTr("Download & Set")
                     enabled: root.downloadState !== "progress"
+                    onClicked: {
                         const wallpaper = root.selectedWallpaper;
                         if (wallpaper) {
                             root.isDownloading = true;
