@@ -12,6 +12,10 @@ if [[ -f "$BACKUP_DIR_FILE" ]]; then
     BACKUP_DIR="$(cat "$BACKUP_DIR_FILE" 2>/dev/null || true)"
 fi
 
+if [[ -n "$BACKUP_DIR" ]] && [[ ! -d "$BACKUP_DIR" ]]; then
+    BACKUP_DIR=""
+fi
+
 if [[ -z "$BACKUP_DIR" ]]; then
     BACKUP_DIR="$BUNDLE_DIR/backups/$(date +%Y%m%d_%H%M%S)"
 fi
@@ -31,8 +35,23 @@ fi
 echo "  Recording previous login shell..."
 getent passwd "$USER" | cut -d: -f7 > "$BACKUP_DIR/previous_shell.txt"
 
-echo "  Backing up shell rc files..."
-mkdir -p "$BACKUP_DIR/shellrc"
+echo "  Backing up pre-install configs..."
+mkdir -p "$BACKUP_DIR/shellrc" "$BACKUP_DIR/.config" "$BACKUP_DIR/local"
+
+# Backup selected config dirs that may be overwritten/removed during install/uninstall
+for cfg in btop fastfetch fish foot hypr kitty micro thunar; do
+    if [[ -e "$HOME/.config/$cfg" ]]; then
+        cp -a "$HOME/.config/$cfg" "$BACKUP_DIR/.config/$cfg" 2>/dev/null || true
+    fi
+done
+
+# Backup Konsole config/profiles (system tweaks may modify these)
+if [[ -f "$HOME/.config/konsolerc" ]]; then
+    cp -a "$HOME/.config/konsolerc" "$BACKUP_DIR/.config/konsolerc" 2>/dev/null || true
+fi
+if [[ -d "$HOME/.local/share/konsole" ]]; then
+    cp -a "$HOME/.local/share/konsole" "$BACKUP_DIR/local/konsole" 2>/dev/null || true
+fi
 
 backup_shell_rc() {
     local src="$1"

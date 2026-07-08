@@ -118,7 +118,7 @@ PREVIOUS_LOOKANDFEEL=""
 SHELL_RC_RESTORED="false"
 
 if [[ -d "$BUNDLE_DIR/backups" ]]; then
-    mapfile -t backups < <(find "$BUNDLE_DIR/backups" -mindepth 1 -maxdepth 1 -type d | sort -r)
+    mapfile -t backups < <(find "$BUNDLE_DIR/backups" -mindepth 1 -maxdepth 1 -type d -name '[0-9]*_[0-9]*' | sort -r)
     if [[ ${#backups[@]} -gt 0 ]]; then
         echo
         echo -e "${CYAN}Available backups to restore from:${RST}"
@@ -479,6 +479,7 @@ restore_shell_rc() {
         return 1
     fi
 
+    local state
     state="$(cat "$state_file" 2>/dev/null || true)"
     case "$state" in
         present)

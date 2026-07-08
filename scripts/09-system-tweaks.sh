@@ -22,7 +22,8 @@ warn() { echo -e "${RED}[WARN]  $*${RST}"; }
 # If setup.sh exported SUDO_PASS we reuse it; otherwise we fail fast.
 run_sudo_non_interactive() {
     if [[ -n "${SUDO_PASS:-}" ]]; then
-        printf '%s\n' "$SUDO_PASS" | sudo -S -n "$@"
+        # Feed password via stdin; avoid forcing -n (it would fail immediately if auth is required).
+        printf '%s\n' "$SUDO_PASS" | sudo -S -p '' "$@"
     else
         sudo -n "$@"
     fi
