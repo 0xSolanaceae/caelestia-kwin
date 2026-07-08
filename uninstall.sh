@@ -74,7 +74,7 @@ cat << 'EOF'
 EOF
 echo -e "${RST}"
 echo -e "${CYAN}+------------------------------------------------------------------+${RST}"
-echo -e "${CYAN}|${RST} ${BOLD}${PURPLE}CAELESTIA KDE UNINSTALLER${RST}                                      ${CYAN}|${RST}"
+echo -e "${CYAN}|${RST} ${BOLD}${PURPLE}CAELESTIA KDE UNINSTALLER${RST}                                       ${CYAN}|${RST}"
 echo -e "${CYAN}+------------------------------------------------------------------+${RST}"
 echo
 echo -e " ${YELLOW}This will remove Caelestia KDE shell files and configs.${RST}"
@@ -111,34 +111,38 @@ REMOVE_PACKAGES=false
 
 # -- Backup selection -----------------------------------------------------------
 SELECTED_BACKUP=""
+SELECTED_KNSV=""
+KONSAVE_BIN=""
+THEME_RESTORED_FROM_BACKUP="false"
+PREVIOUS_LOOKANDFEEL=""
+SHELL_RC_RESTORED="false"
+
 if [[ -d "$BUNDLE_DIR/backups" ]]; then
-    mapfile -t backups < <(ls -dt "$BUNDLE_DIR"/backups/[0-9]*_[0-9]* 2>/dev/null)
+    mapfile -t backups < <(find "$BUNDLE_DIR/backups" -mindepth 1 -maxdepth 1 -type d | sort -r)
     if [[ ${#backups[@]} -gt 0 ]]; then
         echo
         echo -e "${CYAN}Available backups to restore from:${RST}"
         for i in "${!backups[@]}"; do
-            bname="$(basename "${backups[$i]}")"
+            bdir="${backups[$i]}"
+            bname="$(basename "$bdir")"
             formatted_date=$(echo "$bname" | sed 's/\([0-9]\{4\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)_\([0-9]\{2\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)/\1-\2-\3 \4:\5:\6/')
-            
+
             tag=""
-            if [[ -f "${backups[$i]}/.config/quickshell/caelestia/shell.qml" ]]; then
-                if diff -qr "${backups[$i]}/.config/quickshell/caelestia" "$BUNDLE_DIR/shell" >/dev/null 2>&1; then
-                    tag="${CYAN} [Caelestia]${RST}"
-                else
-                    tag="${YELLOW} [Caelestia (Modified)]${RST}"
-                fi
+            knsv_file="$(find "$bdir" -maxdepth 1 -type f -name '*.knsv' | head -n 1)"
+            if [[ -n "$knsv_file" ]]; then
+                tag="${CYAN} [konsave]${RST}"
             fi
-            
-            if [[ -f "${backups[$i]}/previous_shell.txt" ]]; then
-                prev_shell="$(cat "${backups[$i]}/previous_shell.txt")"
+
+            if [[ -f "$bdir/previous_shell.txt" ]]; then
+                prev_shell="$(cat "$bdir/previous_shell.txt")"
                 prev_shell_name="$(basename "$prev_shell")"
                 tag="${tag}${CYAN} [Shell: ${prev_shell_name}]${RST}"
             fi
-            
+
             echo -e "  $((i+1))) $formatted_date$tag"
         done
         echo "  0) None (Do not restore from backup)"
-        
+
         while true; do
             read -r -p "Select a backup to restore [1]: " _bsel
             _bsel="${_bsel:-1}"
@@ -147,6 +151,11 @@ if [[ -d "$BUNDLE_DIR/backups" ]]; then
                 break
             elif [[ "$_bsel" -ge 1 ]] && [[ "$_bsel" -le "${#backups[@]}" ]]; then
                 SELECTED_BACKUP="${backups[$((_bsel-1))]}"
+                SELECTED_KNSV="$(find "$SELECTED_BACKUP" -maxdepth 1 -type f -name '*.knsv' | head -n 1)"
+                if [[ -n "$SELECTED_KNSV" ]]; then
+                    break
+                fi
+
                 if [[ -f "$SELECTED_BACKUP/.config/quickshell/caelestia/shell.qml" ]]; then
                     echo
                     warn "The selected backup contains Caelestia configurations."
@@ -165,6 +174,32 @@ if [[ -d "$BUNDLE_DIR/backups" ]]; then
         done
     fi
 fi
+
+if [[ -n "$SELECTED_BACKUP" ]] && [[ -f "$SELECTED_BACKUP/previous_lookandfeel.txt" ]]; then
+    PREVIOUS_LOOKANDFEEL="$(cat "$SELECTED_BACKUP/previous_lookandfeel.txt")"
+fi
+
+ensure_konsave() {
+    if command -v konsave >/dev/null 2>&1; then
+        KONSAVE_BIN="$(command -v konsave)"
+        return 0
+    fi
+
+    if ! command -v python3 >/dev/null 2>&1; then
+        return 1
+    fi
+
+    info "Installing konsave for KDE profile restore..."
+    KONSAVE_VENV_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde/konsave-venv"
+    if [[ ! -x "$KONSAVE_VENV_DIR/bin/konsave" ]]; then
+        python3 -m venv "$KONSAVE_VENV_DIR" >/dev/null 2>&1 || return 1
+        "$KONSAVE_VENV_DIR/bin/python" -m pip install --upgrade pip >/dev/null 2>&1 || true
+        "$KONSAVE_VENV_DIR/bin/python" -m pip install --upgrade konsave >/dev/null 2>&1 || return 1
+    fi
+
+    KONSAVE_BIN="$KONSAVE_VENV_DIR/bin/konsave"
+    [[ -x "$KONSAVE_BIN" ]]
+}
 
 # -- Helper: restore config from backup ----------------------------------------
 restore_or_remove() {
@@ -338,28 +373,33 @@ kwriteconfig6 --file powerdevilrc     --group "AC"               --key "brightne
 ok "Re-enabled KDE OSD notifications"
 
 # Restore KDE theme settings
-if [[ -n "$SELECTED_BACKUP" ]]; then
-    info "Restoring core KDE configuration files from backup..."
-    for kde_cfg in kdeglobals ksplashrc plasmarc kwinrc kcminputrc plasma-org.kde.plasma.desktop-appletsrc; do
-        if [[ -f "$SELECTED_BACKUP/.config/$kde_cfg" ]]; then
-            cp "$SELECTED_BACKUP/.config/$kde_cfg" "$HOME/.config/$kde_cfg"
+if [[ -n "$SELECTED_KNSV" ]]; then
+    if ensure_konsave; then
+        info "Restoring KDE settings from konsave archive..."
+        if "$KONSAVE_BIN" -i "$SELECTED_KNSV" >/dev/null 2>&1 && \
+           "$KONSAVE_BIN" -a caelestia-preinstall >/dev/null 2>&1; then
+            THEME_RESTORED_FROM_BACKUP="true"
+            ok "Restored KDE settings from konsave backup."
+        else
+            warn "konsave restore failed, falling back to manual restore paths."
+            SELECTED_KNSV=""
         fi
-    done
-    ok "Restored core KDE configuration files (including wallpaper and splash)."
-else
-    BACKUP_FILE="$HOME/.config/caelestia-theme-backup.conf"
-    if [[ -f "$BACKUP_FILE" ]]; then
-        info "Restoring KDE themes from $BACKUP_FILE..."
-        while IFS='=' read -r key val; do
-            if [[ -n "$key" && -n "$val" ]]; then
-                cfg_file=$(echo "$key" | cut -d'|' -f1)
-                cfg_group=$(echo "$key" | cut -d'|' -f2)
-                cfg_key=$(echo "$key" | cut -d'|' -f3)
-                cfg_decoded_val=$(echo "$val" | base64 -d)
-                kwriteconfig6 --file "$cfg_file" --group "$cfg_group" --key "$cfg_key" "$cfg_decoded_val" 2>/dev/null || true
+    else
+        warn "konsave is unavailable, falling back to manual restore paths."
+        SELECTED_KNSV=""
+    fi
+fi
+
+if [[ -z "$SELECTED_KNSV" ]]; then
+    if [[ -n "$SELECTED_BACKUP" ]]; then
+        info "Restoring core KDE configuration files from backup..."
+        for kde_cfg in kdeglobals ksplashrc plasmarc kwinrc kcminputrc plasma-org.kde.plasma.desktop-appletsrc; do
+            if [[ -f "$SELECTED_BACKUP/.config/$kde_cfg" ]]; then
+                cp "$SELECTED_BACKUP/.config/$kde_cfg" "$HOME/.config/$kde_cfg"
             fi
-        done < "$BACKUP_FILE"
-        ok "Restored previous KDE theme settings."
+        done
+        THEME_RESTORED_FROM_BACKUP="true"
+        ok "Restored core KDE configuration files (including wallpaper and splash)."
     else
         info "No theme backup found. Reverting to default Breeze theme..."
         kwriteconfig6 --file plasmarc --group "Theme" --key "name" "default"  2>/dev/null || true
@@ -429,6 +469,48 @@ fi
 
 section "Step 7 - Revert Shell Changes"
 
+restore_shell_rc() {
+    local key="$1"
+    local target="$2"
+    local state_file="$SELECTED_BACKUP/shellrc/$key.state"
+    local backup_file="$SELECTED_BACKUP/shellrc/$key"
+
+    if [[ ! -f "$state_file" ]]; then
+        return 1
+    fi
+
+    state="$(cat "$state_file" 2>/dev/null || true)"
+    case "$state" in
+        present)
+            mkdir -p "$(dirname "$target")"
+            if [[ -f "$backup_file" ]]; then
+                cp "$backup_file" "$target"
+                ok "Restored $target from backup"
+                return 0
+            fi
+            ;;
+        missing)
+            rm -f "$target"
+            ok "Removed $target (it did not exist before install)"
+            return 0
+            ;;
+    esac
+
+    return 1
+}
+
+if [[ -n "$SELECTED_BACKUP" ]]; then
+    if restore_shell_rc "bashrc" "$HOME/.bashrc"; then
+        SHELL_RC_RESTORED="true"
+    fi
+    if restore_shell_rc "zshrc" "$HOME/.zshrc"; then
+        SHELL_RC_RESTORED="true"
+    fi
+    if restore_shell_rc "fish_config" "$HOME/.config/fish/config.fish"; then
+        SHELL_RC_RESTORED="true"
+    fi
+fi
+
 # Revert login shell
 _RESTORE_SHELL=""
 if [[ -n "$SELECTED_BACKUP" ]] && [[ -f "$SELECTED_BACKUP/previous_shell.txt" ]]; then
@@ -454,16 +536,24 @@ if [[ -n "$_RESTORE_SHELL" ]]; then
     ok "Login shell reverted to $_RESTORE_SHELL"
 fi
 
-# Remove env var lines appended to ~/.bashrc by the installer
-if [[ -f "$HOME/.bashrc" ]]; then
-    sed -i '/export QML2_IMPORT_PATH=.*caelestia\|export CAELESTIA_LIB_DIR=/d' "$HOME/.bashrc" 2>/dev/null || true
-    ok "Removed Caelestia env vars from ~/.bashrc"
-fi
+if [[ "$SHELL_RC_RESTORED" == "true" ]]; then
+    info "Skipped shell rc line cleanup because original rc files were restored exactly from backup."
+else
+    # Legacy fallback for old backups without shellrc snapshots
+    if [[ -f "$HOME/.bashrc" ]]; then
+        sed -i '/export QML2_IMPORT_PATH=.*caelestia\|export CAELESTIA_LIB_DIR=/d' "$HOME/.bashrc" 2>/dev/null || true
+        ok "Removed Caelestia env vars from ~/.bashrc"
+    fi
 
-# Remove env var lines appended to fish config
-if [[ -f "$HOME/.config/fish/config.fish" ]]; then
-    sed -i '/QML2_IMPORT_PATH\|CAELESTIA_LIB_DIR/d' "$HOME/.config/fish/config.fish" 2>/dev/null || true
-    ok "Removed Caelestia env vars from fish config"
+    if [[ -f "$HOME/.config/fish/config.fish" ]]; then
+        sed -i '/QML2_IMPORT_PATH\|CAELESTIA_LIB_DIR/d' "$HOME/.config/fish/config.fish" 2>/dev/null || true
+        ok "Removed Caelestia env vars from fish config"
+    fi
+
+    if [[ -f "$HOME/.zshrc" ]]; then
+        sed -i '/QML2_IMPORT_PATH\|CAELESTIA_LIB_DIR/d' "$HOME/.zshrc" 2>/dev/null || true
+        ok "Removed Caelestia env vars from ~/.zshrc"
+    fi
 fi
 
 section "Step 8 - Remove System-level Files"
@@ -625,7 +715,15 @@ systemctl --user restart plasma-kglobalaccel.service      2>/dev/null || true
 kbuildsycoca6 --noincremental                             2>/dev/null || true
 
 if command -v lookandfeeltool >/dev/null 2>&1; then
-    lookandfeeltool --apply "org.kde.breeze.desktop" 2>/dev/null || true
+    if [[ -n "$PREVIOUS_LOOKANDFEEL" ]]; then
+        info "Reapplying previous KDE look-and-feel: $PREVIOUS_LOOKANDFEEL"
+        lookandfeeltool --apply "$PREVIOUS_LOOKANDFEEL" 2>/dev/null || \
+            warn "Could not apply $PREVIOUS_LOOKANDFEEL with lookandfeeltool."
+    elif [[ "$THEME_RESTORED_FROM_BACKUP" == "true" ]]; then
+        info "Skipping Breeze look-and-feel apply because theme was restored from backup."
+    else
+        lookandfeeltool --apply "org.kde.breeze.desktop" 2>/dev/null || true
+    fi
 fi
 
 ok "KDE reloaded"

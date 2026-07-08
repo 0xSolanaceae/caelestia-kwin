@@ -4,14 +4,24 @@
 BUNDLE_DIR="${BUNDLE_DIR:?BUNDLE_DIR not set}"
 SRC_DIR="$BUNDLE_DIR/src"
 DOTS_DIR="$SRC_DIR/dots"
-BACKUP_DIR="$BUNDLE_DIR/backups/$(date +%Y%m%d_%H%M%S)"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde"
+BACKUP_DIR_FILE="$CACHE_DIR/backup-dir.txt"
+BACKUP_DIR=""
+
+if [[ -f "$BACKUP_DIR_FILE" ]]; then
+    BACKUP_DIR="$(cat "$BACKUP_DIR_FILE" 2>/dev/null || true)"
+fi
+
+if [[ -z "$BACKUP_DIR" ]]; then
+    BACKUP_DIR="$BUNDLE_DIR/backups/$(date +%Y%m%d_%H%M%S)"
+fi
 
 echo
 echo ""
 echo "  Step 3/11  Config Deployment"
 echo ""
 
-mkdir -p "$BACKUP_DIR/config" "$BACKUP_DIR/local"
+mkdir -p "$BACKUP_DIR"
 
 if [[ ! -d "$DOTS_DIR/fish" && ! -d "$DOTS_DIR/hypr" ]]; then
     echo "  [ERR] Missing src/dots content. Run: git submodule update --init --recursive src/dots"
@@ -21,8 +31,23 @@ fi
 echo "  Recording previous login shell..."
 getent passwd "$USER" | cut -d: -f7 > "$BACKUP_DIR/previous_shell.txt"
 
-echo "  Backing up the entire ~/.config folder..."
-cp -r "$HOME/.config" "$BACKUP_DIR/" 2>/dev/null || true
+echo "  Backing up shell rc files..."
+mkdir -p "$BACKUP_DIR/shellrc"
+
+backup_shell_rc() {
+    local src="$1"
+    local key="$2"
+    if [[ -f "$src" ]]; then
+        cp "$src" "$BACKUP_DIR/shellrc/$key"
+        printf 'present\n' > "$BACKUP_DIR/shellrc/$key.state"
+    else
+        printf 'missing\n' > "$BACKUP_DIR/shellrc/$key.state"
+    fi
+}
+
+backup_shell_rc "$HOME/.bashrc" "bashrc"
+backup_shell_rc "$HOME/.zshrc" "zshrc"
+backup_shell_rc "$HOME/.config/fish/config.fish" "fish_config"
 
 echo "  Deploying Caelestia configs..."
 for config in btop fastfetch fish foot hypr kitty micro thunar; do
@@ -39,13 +64,6 @@ done
 if [[ -f "$DOTS_DIR/starship.toml" ]]; then
     cp "$DOTS_DIR/starship.toml" "$HOME/.config/starship.toml"
     echo "    Deployed: starship.toml"
-fi
-
-#  Backup Konsole 
-echo "  Backing up Konsole config..."
-# Note: konsolerc is already backed up with the entire ~/.config folder above
-if [[ -d "$HOME/.local/share/konsole" ]]; then
-    cp -r "$HOME/.local/share/konsole" "$BACKUP_DIR/local/" 2>/dev/null || true
 fi
 
 #  Deploy Bridge Files 

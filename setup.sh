@@ -387,7 +387,7 @@ echo
 echo -e "${CYAN}---------------------------------------------${RST}"
 echo -e "${CYAN}  Step 3/11 - Config Deployment${RST}"
 echo -e "${CYAN}---------------------------------------------${RST}"
-run_step "Backup KDE Themes" "$SCRIPTS_DIR/00-backup-themes.sh"
+run_step "Backup KDE Settings" "$SCRIPTS_DIR/00-backup-themes.sh"
 ensure_dots_content
 run_step "Config deployment" "$SCRIPTS_DIR/03-deploy-configs.sh"
 

@@ -58,4 +58,14 @@ if [[ "${POLONIUM_ENABLED:-false}" == "true" ]]; then
 fi
 
 echo
+echo "--- Ensuring Python tooling for konsave backups ---"
+if ! command -v python3 >/dev/null 2>&1 || ! python3 -m pip --version >/dev/null 2>&1; then
+    if [[ "$BASE_DISTRO" == "arch" ]]; then
+        sudo pacman -S --needed --noconfirm python python-pip
+    elif [[ "$BASE_DISTRO" == "fedora" ]]; then
+        sudo dnf install -y python3 python3-pip
+    fi
+fi
+
+echo
 echo "[OK]  Package installation complete."
