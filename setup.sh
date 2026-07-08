@@ -39,6 +39,13 @@ normalize_line_endings_first() {
         esac
     fi
 
+    if [[ "$base_distro" == "unknown" ]]; then
+        if command -v pacman >/dev/null 2>&1; then
+            base_distro="arch"
+        elif command -v dnf >/dev/null 2>&1; then
+            base_distro="fedora"
+        fi
+    fi
     mapfile -t crlf_files < <(
         find "$BUNDLE_DIR" -path "$BUNDLE_DIR/.git" -prune -o -type f -print0 | \
             xargs -0 grep -Il $'\r' 2>/dev/null || true
@@ -75,7 +82,7 @@ normalize_line_endings_first() {
 
                 (
                     cd "$BUNDLE_DIR" || exit 1
-                    find . -type f -print0 | xargs -0 dos2unix
+                    printf '%s\0' "${crlf_files[@]}" | xargs -0 -r dos2unix --
                 ) || return 1
 
                 echo "[OK]    Line endings normalized to LF."
