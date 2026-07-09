@@ -34,13 +34,20 @@ void CircularBuffer::setCapacity(int capacity) {
         return;
     }
 
-    // Re-push old values, keeping the most recent ones
+    // Re-push old values, keeping the most recent ones.
+    // Initialize maximum from the first restored value to preserve negative-only ranges.
     const auto start = old.size() > capacity ? old.size() - capacity : 0;
+    bool hasRestoredValue = false;
     for (auto i = start; i < old.size(); ++i) {
         m_data[m_head] = old[i];
         m_head = (m_head + 1) % m_capacity;
         m_count++;
-        m_cachedMaximum = std::max(m_cachedMaximum, old[i]);
+        if (!hasRestoredValue) {
+            m_cachedMaximum = old[i];
+            hasRestoredValue = true;
+        } else {
+            m_cachedMaximum = std::max(m_cachedMaximum, old[i]);
+        }
     }
 
     emit capacityChanged();

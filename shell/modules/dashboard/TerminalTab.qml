@@ -19,7 +19,6 @@ Item {
 
     property string outputBuffer: ""
     property string currentDirectory: Paths.home
-    property string currentSuggestion: ""
     property string hostname: ""
     property int activeProcessesCount: 0
     property bool isRunning: activeProcessesCount > 0
@@ -384,33 +383,6 @@ Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
 
-                        Text {
-                            id: ghostText
-
-                            anchors.fill: parent
-                            leftPadding: 0
-                            rightPadding: 0
-                            topPadding: 0
-                            bottomPadding: 0
-
-                            font: commandInput.font
-                            verticalAlignment: Text.AlignVCenter
-                            textFormat: Text.RichText
-
-                            text: {
-                                let typed = commandInput.text;
-                                let escapedTyped = typed.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                                let suggestionColor = Qt.alpha(Colours.palette.m3onSurfaceVariant, 0.35).toString();
-
-                                if (currentSuggestion !== "" && currentSuggestion.startsWith(typed)) {
-                                    let suffix = currentSuggestion.substring(typed.length);
-                                    let escapedSuffix = suffix.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                                    return "<span style='color: transparent;'>" + escapedTyped + "</span>" + "<span style='color: " + suggestionColor + ";'>" + escapedSuffix + "</span>";
-                                }
-                                return "";
-                            }
-                        }
-
                         StyledTextField {
                             id: commandInput
 
@@ -433,21 +405,6 @@ Item {
                             onVisibleChanged: {
                                 if (visible) {
                                     forceActiveFocus();
-                                }
-                            }
-
-                            onTextChanged: {
-                                currentSuggestion = "";
-                            }
-
-                            // Press Right Arrow key to accept the suggestion
-                            Keys.onRightPressed: event => {
-                                if (currentSuggestion !== "" && currentSuggestion.startsWith(text) && cursorPosition === text.length) {
-                                    text = currentSuggestion;
-                                    cursorPosition = text.length;
-                                    event.accepted = true;
-                                } else {
-                                    event.accepted = false; // Normal cursor move
                                 }
                             }
 
@@ -483,22 +440,16 @@ Item {
 
                             // Trigger native fish autocompletion on Tab key press
                             Keys.onTabPressed: event => {
-                                if (currentSuggestion !== "" && currentSuggestion.startsWith(text)) {
-                                    text = currentSuggestion;
-                                    cursorPosition = text.length;
-                                    event.accepted = true;
-                                } else {
-                                    let typed = text;
-                                    if (typed.trim() === "")
-                                        return;
+                                let typed = text;
+                                if (typed.trim() === "")
+                                    return;
 
-                                    autocompleterComp.createObject(root, {
-                                        command: ["fish", "-c", "complete -C\"" + typed.replace(/"/g, "\\\"") + "\""],
-                                        workingDirectory: currentDirectory,
-                                        running: true
-                                    });
-                                    event.accepted = true;
-                                }
+                                autocompleterComp.createObject(root, {
+                                    command: ["fish", "-c", "complete -C\"" + typed.replace(/"/g, "\\\"") + "\""],
+                                    workingDirectory: currentDirectory,
+                                    running: true
+                                });
+                                event.accepted = true;
                             }
 
                             onAccepted: {
@@ -512,7 +463,6 @@ Item {
                                 }
                                 historyIndex = -1;
                                 tempTypedText = "";
-                                currentSuggestion = "";
                                 root.sendCommand(cmd);
                             }
                         }
