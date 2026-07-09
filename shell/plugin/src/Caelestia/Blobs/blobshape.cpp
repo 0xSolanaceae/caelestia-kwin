@@ -301,7 +301,7 @@ void BlobShape::updatePolish() {
     const float smoothFactor = pad;
     constexpr float minR = 2.0f;
     const bool cornerFill = m_group->cornerFill();
-    const auto rectCount = m_cachedRects.size();
+    const qsizetype rectCount = qMin(m_cachedRects.size(), qsizetype(16));
     QVector<int> cornerExcludeMasks(rectCount, 0);
 
     if (cornerFill) {
