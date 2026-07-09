@@ -274,7 +274,7 @@ PY
             // Don't re-poll if the token is known to be absent — it won't change until
             // the user saves one via Settings → Panels → Taskbar → GitHub, which fires
             // GithubStore.refresh() and restarts the process directly.
-            if (root.lastError.length > 0 && !BarComponents.GithubStore.available)
+            if ((root.lastError.includes("No token set") || root.lastError.includes("Missing GITHUB_TOKEN")) && !BarComponents.GithubStore.available)
                 return;
             proc.exec(proc.command);
         }
@@ -284,6 +284,7 @@ PY
         target: BarComponents.GithubStore
         function onRefresh(): void {
             root.lastError = "";
+            BarComponents.GithubStore.lastError = "";
             BarComponents.GithubStore.available = false;
             proc.exec(proc.command);
         }
