@@ -621,7 +621,7 @@ Singleton {
             if (result.success) {
                 Qt.callLater(() => {
                     loadVpnConnections(() => {});
-                }, 500);
+                });
             } else {
                 loadVpnConnections(() => {});
             }
@@ -652,7 +652,7 @@ Singleton {
             if (result.success) {
                 Qt.callLater(() => {
                     loadVpnConnections(() => {});
-                }, 500);
+                });
             } else {
                 loadVpnConnections(() => {});
             }
