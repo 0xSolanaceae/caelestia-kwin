@@ -8,57 +8,88 @@ on:
 jobs:
   rolling-release:
     runs-on: ubuntu-latest
+    concurrency:
+      group: rolling-release
+      cancel-in-progress: true
     permissions:
       contents: write
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
-      - name: Extract Version
-        id: version
+      - name: Fetch dev Branch
         run: |
-          # Extract the version number (e.g. v2.0.0) from the README.md
-          VERSION=$(grep -oP '(?<=<b>)[vV0-9.]+(?=</b>)' .github/README.md | head -n 1)
-          if [ -z "$VERSION" ]; then
-            VERSION="v2.1.0" # fallback
+          set -euo pipefail
+          git fetch origin dev:refs/remotes/origin/dev --force
+
+      - name: Load Version from Config
+        run: |
+          set -euo pipefail
+          source .github/version.env
+
+          if [[ -z "${VERSION:-}" ]]; then
+            echo "VERSION is missing in .github/version.env"
+            exit 1
           fi
+
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "VERSION must match vX.Y.Z, got: $VERSION"
+            exit 1
+          fi
+
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Sync Version in Repo
+      - name: Validate Version Sync (Release-Only)
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Update AboutPage.qml
-          sed -i -E "s/text: \"v[0-9]+\.[0-9]+\.[0-9]+\"/text: \"$VERSION\"/g" shell/modules/nexus/pages/AboutPage.qml
-          
-          # Update CMakeLists.txt
-          sed -i -E "s/set\(VERSION \"v[0-9]+\.[0-9]+\.[0-9]+\"\)/set(VERSION \"$VERSION\")/g" shell/CMakeLists.txt
+          set -euo pipefail
 
-          # Update README dropdown
-          sed -i -E "s/<b>  v[0-9]+\.[0-9]+\.[0-9]+ new features<\/b>/<b> $VERSION new features<\/b>/g" .github/README.md
-          
-          git add shell/modules/nexus/pages/AboutPage.qml shell/CMakeLists.txt .github/README.md
-          git commit -m "chore: sync version to $VERSION [skip ci]" || echo "No changes to commit"
-          git push origin main
+          CMAKE_VERSION=$(sed -nE 's/^[[:space:]]*set\(VERSION "([^"]+)"\).*/\1/p' shell/CMakeLists.txt | head -n 1)
+          ABOUT_VERSION=$(grep -oE 'text: "v[0-9]+\.[0-9]+\.[0-9]+"' shell/modules/nexus/pages/AboutPage.qml | head -n 1 | sed -E 's/text: "([^"]+)"/\1/')
+
+          echo "Config VERSION: $VERSION"
+          echo "CMake VERSION:  ${CMAKE_VERSION:-<missing>}"
+          echo "About VERSION:  ${ABOUT_VERSION:-<missing>}"
+
+          if [[ "${CMAKE_VERSION:-}" != "$VERSION" || "${ABOUT_VERSION:-}" != "$VERSION" ]]; then
+            echo "Version drift detected. Update files to match .github/version.env before release."
+            exit 1
+          fi
 
       - name: Update Rolling Tag
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          PREVIOUS_ROLLING=$(git rev-list -n 1 rolling 2>/dev/null || true)
+          set -euo pipefail
+
+          PREVIOUS_ROLLING=$(git rev-parse -q --verify refs/tags/rolling || true)
+          PREVIOUS_DEV_SYNC=$(git rev-parse -q --verify refs/tags/rolling-dev-sync || true)
+          DEV_SYNC_POINT=$(git merge-base "$GITHUB_SHA" origin/dev)
+
+          if [[ -z "${DEV_SYNC_POINT:-}" ]]; then
+            echo "Unable to resolve a merge-base between main and origin/dev."
+            exit 1
+          fi
+
           echo "PREVIOUS_ROLLING=$PREVIOUS_ROLLING" >> $GITHUB_ENV
-          git tag -f rolling
-          git push -f origin rolling
+          echo "PREVIOUS_DEV_SYNC=$PREVIOUS_DEV_SYNC" >> $GITHUB_ENV
+          echo "DEV_SYNC_POINT=$DEV_SYNC_POINT" >> $GITHUB_ENV
+
+          git tag -f rolling "$GITHUB_SHA"
+          git tag -f rolling-dev-sync "$DEV_SYNC_POINT"
+          git push origin refs/tags/rolling --force
+          git push origin refs/tags/rolling-dev-sync --force
 
       - name: Create or Update Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -n "$PREVIOUS_ROLLING" ]; then
-            git log "$PREVIOUS_ROLLING..HEAD" --no-merges --invert-grep --grep='\[skip ci\]' --pretty='- %s (%h)' > commit_notes.txt
+          set -euo pipefail
+
+          if [ -n "$PREVIOUS_DEV_SYNC" ] && [ "$PREVIOUS_DEV_SYNC" != "$DEV_SYNC_POINT" ]; then
+            git log "$PREVIOUS_DEV_SYNC..$DEV_SYNC_POINT" --no-merges --invert-grep --grep='\[skip ci\]' --pretty='- %s (%h)' > commit_notes.txt
           else
-            git log -n 15 --no-merges --invert-grep --grep='\[skip ci\]' --pretty='- %s (%h)' > commit_notes.txt
+            git log origin/dev -n 15 --no-merges --invert-grep --grep='\[skip ci\]' --pretty='- %s (%h)' > commit_notes.txt
           fi
 
           {
@@ -75,13 +106,16 @@ jobs:
             echo "*May your desktop always reflect the stars.*"
           } > release_notes.md
 
-          gh release edit rolling \
-            --title "Caelestia KDE - Rolling Release" \
-            --notes-file release_notes.md \
-            --prerelease=false \
-            --latest || \
-          gh release create rolling \
-            --title "Caelestia KDE - Rolling Release" \
-            --notes-file release_notes.md \
-            --prerelease=false \
-            --latest
+          if gh release view rolling >/dev/null 2>&1; then
+            gh release edit rolling \
+              --title "Caelestia KDE $VERSION" \
+              --notes-file release_notes.md \
+              --prerelease=false \
+              --latest
+          else
+            gh release create rolling \
+              --title "Caelestia KDE $VERSION" \
+              --notes-file release_notes.md \
+              --prerelease=false \
+              --latest
+          fi
