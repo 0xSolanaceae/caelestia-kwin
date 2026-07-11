@@ -643,12 +643,12 @@ Item {
                                         currentActionText = "Searching the web...";
                                         var query = String(args.query || "");
                                         var page = args.page || 1;
-                                        runAgentCommand(["env", "PYTHONIOENCODING=utf8", "python3", Quickshell.env("HOME") + "/.config/quickshell/caelestia/scripts/orion_search.py", "--mode", "search", "--query", query, "--page", String(page)], "exec_" + toolName);
+                                        runAgentCommand(["env", "PYTHONIOENCODING=utf8", "python3", Quickshell.shellDir + "/scripts/orion_search.py", "--mode", "search", "--query", query, "--page", String(page)], "exec_" + toolName);
 
                                     } else if (toolName === "read_webpage") {
                                         currentActionText = "Reading webpage...";
                                         var url = String(args.url || "");
-                                        runAgentCommand(["env", "PYTHONIOENCODING=utf8", "python3", Quickshell.env("HOME") + "/.config/quickshell/caelestia/scripts/orion_search.py", "--mode", "read", "--url", url], "exec_" + toolName);
+                                        runAgentCommand(["env", "PYTHONIOENCODING=utf8", "python3", Quickshell.shellDir + "/scripts/orion_search.py", "--mode", "read", "--url", url], "exec_" + toolName);
 
                                     } else if (toolName === "open_app") {
                                         currentActionText = "Opening app...";
