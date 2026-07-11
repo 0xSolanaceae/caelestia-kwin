@@ -103,7 +103,7 @@ PageBase {
 
     function resetToDefaults() {
         GlobalConfig.bar.entries = defaultEntries();
-        load();
+        Qt.callLater(load);
     }
 
     function save() {

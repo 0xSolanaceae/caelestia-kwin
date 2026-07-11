@@ -13,6 +13,7 @@ StyledRect {
     property real value: NaN
     property color textColor: Colours.palette.m3onSurface
     property color iconColor: accent
+    property real widthFactor: 2.35
 
     readonly property bool isHorizontal: Config.bar.position === "top" || Config.bar.position === "bottom"
     readonly property int barThickness: Math.round(Tokens.sizes.bar.innerWidth * Math.max(0.6, !isNaN(Config.bar.scale) ? Config.bar.scale : 1.0))
@@ -26,7 +27,7 @@ StyledRect {
     radius: Tokens.rounding.full
     clip: true
 
-    implicitWidth: isHorizontal ? Math.max(contentRow.implicitWidth + hPadding * 2, Math.round(barThickness * 1.6)) : barThickness
+    implicitWidth: isHorizontal ? Math.round(barThickness * widthFactor) : barThickness
     implicitHeight: isHorizontal ? barThickness : Math.max(contentCol.implicitHeight + vPadding * 2 + trackThickness + Tokens.spacing.extraSmall, barThickness)
 
     RowLayout {
@@ -58,6 +59,8 @@ StyledRect {
             text: root.valueText
             color: root.textColor
             font: Tokens.font.body.builders.small.weight(Font.DemiBold).build()
+            elide: Text.ElideRight
+            maximumLineCount: 1
             animate: true
         }
 

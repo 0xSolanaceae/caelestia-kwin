@@ -4,6 +4,7 @@ import qs.services
 
 PerfStat {
     readonly property real totalSpeed: (NetworkUsage.downloadSpeed ?? 0) + (NetworkUsage.uploadSpeed ?? 0)
+    widthFactor: 2.9
 
     icon: "swap_vert"
     accent: Colours.palette.m3tertiary
