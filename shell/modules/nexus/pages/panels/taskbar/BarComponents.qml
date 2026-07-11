@@ -38,6 +38,8 @@ PageBase {
     property string globalDragSourceList: ""
     property int globalDragSourceIndex: -1
     property string globalDragHoveredList: ""
+    readonly property real zonePadding: Tokens.padding.medium
+    readonly property real emptyZoneHeight: 72
 
     function getModel(name) {
         if (name === "left") return leftModel;
@@ -76,6 +78,31 @@ PageBase {
                 libraryModel.append({ "compId": key, "isPlaceholder": false });
             }
         }
+    }
+
+    function defaultEntries() {
+        return [
+            { id: "logo", enabled: true, zone: "left" },
+            { id: "workspaces", enabled: true, zone: "left" },
+            { id: "activeWindow", enabled: true, zone: "left" },
+            { id: "dock", enabled: true, zone: "middle" },
+            { id: "tray", enabled: true, zone: "right" },
+            { id: "github", enabled: true, zone: "right" },
+            { id: "clock", enabled: true, zone: "right" },
+            { id: "statusIcons", enabled: true, zone: "right" },
+            { id: "perfCpu", enabled: false, zone: "right" },
+            { id: "perfMemory", enabled: false, zone: "right" },
+            { id: "perfStorage", enabled: false, zone: "right" },
+            { id: "perfNetwork", enabled: false, zone: "right" },
+            { id: "perfGpu", enabled: false, zone: "right" },
+            { id: "perfBattery", enabled: false, zone: "right" },
+            { id: "power", enabled: true, zone: "right" }
+        ];
+    }
+
+    function resetToDefaults() {
+        GlobalConfig.bar.entries = defaultEntries();
+        load();
     }
 
     function save() {
@@ -120,8 +147,8 @@ PageBase {
         // Left Side: Active Components Zones
         ColumnLayout {
             Layout.fillWidth: true
-            Layout.fillHeight: true
             Layout.preferredWidth: 1
+            Layout.alignment: Qt.AlignTop
             spacing: Tokens.spacing.medium
 
             Text {
@@ -139,7 +166,7 @@ PageBase {
             // Left Zone
             StyledRect {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
+                implicitHeight: Math.max(root.emptyZoneHeight, leftList.contentHeight + root.zonePadding * 2)
                 color: Colours.palette.m3surfaceContainer
                 radius: Tokens.rounding.large
                 
@@ -191,8 +218,7 @@ PageBase {
             // Middle Zone
             StyledRect {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.preferredHeight: 1
+                implicitHeight: Math.max(root.emptyZoneHeight, middleList.contentHeight + root.zonePadding * 2)
                 color: Colours.palette.m3surfaceContainer
                 radius: Tokens.rounding.large
                 
@@ -244,7 +270,7 @@ PageBase {
             // Right Zone
             StyledRect {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
+                implicitHeight: Math.max(root.emptyZoneHeight, rightList.contentHeight + root.zonePadding * 2)
                 color: Colours.palette.m3surfaceContainer
                 radius: Tokens.rounding.large
                 
@@ -297,8 +323,8 @@ PageBase {
         // Right Side: Library
         ColumnLayout {
             Layout.fillWidth: true
-            Layout.fillHeight: true
             Layout.preferredWidth: 1
+            Layout.alignment: Qt.AlignTop
             spacing: Tokens.spacing.medium
 
             RowLayout {
@@ -322,11 +348,19 @@ PageBase {
                 }
 
                 Item { Layout.fillWidth: true }
+
+                TextButton {
+                    text: qsTr("RESET")
+                    type: TextButton.Filled
+                    ToolTip.text: qsTr("Restore the default taskbar component layout")
+                    ToolTip.visible: hovered
+                    onClicked: root.resetToDefaults()
+                }
             }
 
             StyledRect {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
+                implicitHeight: Math.max(root.emptyZoneHeight, libList.contentHeight + root.zonePadding * 2)
                 color: "transparent"
                 
                 Text {
