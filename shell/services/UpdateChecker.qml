@@ -365,17 +365,26 @@ fi
                     }
 
                     const dedupedCommits = [];
-                    const seenSubjects = new Set();
+                    const seenKeys = new Set();
                     for (let i = 0; i < parsedCommits.length; i++) {
-                        const subject = parsedCommits[i].subject;
-                        if (seenSubjects.has(subject))
+                        const key = `${parsedCommits[i].hash}|${parsedCommits[i].subject}`;
+                        if (seenKeys.has(key))
                             continue;
-                        seenSubjects.add(subject);
+                        seenKeys.add(key);
                         dedupedCommits.push(parsedCommits[i]);
                     }
 
                     root.commits = dedupedCommits;
-                    root.availableVersions = parsedVersionSummaryMode ? parsedVersions : [];
+                    const uniqueVersions = [];
+                    const seenVersions = new Set();
+                    for (let i = 0; i < parsedVersions.length; i++) {
+                        const v = parsedVersions[i];
+                        if (seenVersions.has(v))
+                            continue;
+                        seenVersions.add(v);
+                        uniqueVersions.push(v);
+                    }
+                    root.availableVersions = parsedVersionSummaryMode ? uniqueVersions : [];
                     if (parsedVersionSummaryMode) {
                         if (!root.availableVersions.includes(root.targetVersion)) {
                             root.targetVersion = root.availableVersions.length > 0 ? root.availableVersions[0] : "";

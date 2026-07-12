@@ -77,7 +77,10 @@ if [ -d "$BUNDLE_DIR/.git" ]; then
         fi
     fi
 
-    if ! git -C "$BUNDLE_DIR" ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+    if [[ "$BRANCH" != "main" && "$BRANCH" != "dev" ]]; then
+        warn "Branch '$BRANCH' is not allowed. Falling back to main."
+        BRANCH="main"
+    elif ! git -C "$BUNDLE_DIR" ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
         warn "Remote branch '$BRANCH' not found. Falling back to main."
         BRANCH="main"
     fi

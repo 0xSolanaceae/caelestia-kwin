@@ -30,9 +30,16 @@ PageBase {
     }
 
     function updateVersionItems() {
+        if (root.versionItems) {
+            for (let i = 0; i < root.versionItems.length; i++) {
+                root.versionItems[i].destroy();
+            }
+        }
         let items = [];
         for (let i = 0; i < UpdateChecker.availableVersions.length; i++) {
-            items.push(Qt.createQmlObject('import qs.components.controls; MenuItem { text: "' + UpdateChecker.availableVersions[i] + '"; icon: "history" }', root));
+            const item = Qt.createQmlObject('import qs.components.controls; MenuItem { icon: "history" }', root);
+            item.text = UpdateChecker.availableVersions[i];
+            items.push(item);
         }
         root.versionItems = items;
     }
