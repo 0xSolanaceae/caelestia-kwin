@@ -326,7 +326,12 @@ PageBase {
         }
         Process {
             id: updateProcess
-            command: ["bash", "-c", `CAELESTIA_SKIP_DEPLOY=${updaterSettings.deployConfigs ? 0 : 1} CAELESTIA_SKIP_BUILD=${updaterSettings.buildShell ? 0 : 1} ${Paths.absolutePath("~/.local/bin/caelestia-update")} ${UpdateChecker.currentBranch}${UpdateChecker.versionSummaryMode && UpdateChecker.targetVersion !== "" ? (" " + UpdateChecker.targetVersion) : ""}`]
+            command: [Paths.absolutePath("~/.local/bin/caelestia-update"), UpdateChecker.currentBranch]
+                .concat(UpdateChecker.versionSummaryMode && UpdateChecker.targetVersion !== "" ? [UpdateChecker.targetVersion] : [])
+            environment: ({
+                    CAELESTIA_SKIP_DEPLOY: updaterSettings.deployConfigs ? "0" : "1",
+                    CAELESTIA_SKIP_BUILD: updaterSettings.buildShell ? "0" : "1"
+                })
             
             stdout: SplitParser {
                 onRead: text => {
