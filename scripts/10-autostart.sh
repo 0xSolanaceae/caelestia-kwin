@@ -13,11 +13,11 @@ echo ""
 # Determine the path of caelestia to avoid PATH differences at login.
 if command -v caelestia >/dev/null 2>&1; then
     CAELESTIA_PATH=$(command -v caelestia)
-elif [ -f "$HOME/.local/bin/caelestia" ]; then
+elif [ -x "$HOME/.local/bin/caelestia" ]; then
     CAELESTIA_PATH="$HOME/.local/bin/caelestia"
-elif [ -f "/usr/local/bin/caelestia" ]; then
+elif [ -x "/usr/local/bin/caelestia" ]; then
     CAELESTIA_PATH="/usr/local/bin/caelestia"
-elif [ -f "/usr/bin/caelestia" ]; then
+elif [ -x "/usr/bin/caelestia" ]; then
     CAELESTIA_PATH="/usr/bin/caelestia"
 else
     CAELESTIA_PATH="caelestia"

@@ -133,11 +133,11 @@ echo "Restarting bridge and shell to apply changes..."
 
 if command -v caelestia >/dev/null 2>&1; then
     CAELESTIA_BIN=$(command -v caelestia)
-elif [[ -f "$HOME/.local/bin/caelestia" ]]; then
+elif [[ -x "$HOME/.local/bin/caelestia" ]]; then
     CAELESTIA_BIN="$HOME/.local/bin/caelestia"
-elif [[ -f "/usr/local/bin/caelestia" ]]; then
+elif [[ -x "/usr/local/bin/caelestia" ]]; then
     CAELESTIA_BIN="/usr/local/bin/caelestia"
-elif [[ -f "/usr/bin/caelestia" ]]; then
+elif [[ -x "/usr/bin/caelestia" ]]; then
     CAELESTIA_BIN="/usr/bin/caelestia"
 else
     CAELESTIA_BIN="caelestia"
@@ -149,4 +149,4 @@ sleep 2
 "$CAELESTIA_BIN" shell -d >/dev/null 2>&1 &
 echo "Shell restarted successfully!"
 echo
-echo "If the shell doesn't start, please restart it manually by running: caelestia shell -d"
+echo "If the shell doesn't start, please restart it manually by running: $CAELESTIA_BIN shell -d"
