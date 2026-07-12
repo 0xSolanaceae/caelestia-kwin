@@ -12,3 +12,7 @@
 .SRCINFO
 backups/
 src/bin/build/
+
+# Python
+__pycache__/
+*.py[cod]

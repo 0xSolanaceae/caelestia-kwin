@@ -62,11 +62,8 @@ class MetadataConsistencyTests(unittest.TestCase):
         )
 
         cmake_match = re.search(r'set\(VERSION "(v[0-9]+\.[0-9]+\.[0-9]+)"\)', cmake_text)
-        about_match = re.search(r'text:\s*"(v[0-9]+\.[0-9]+\.[0-9]+)"', about_text)
-
         self.assertIsNotNone(cmake_match, "Could not find shell version in shell/CMakeLists.txt")
-        self.assertIsNotNone(about_match, "Could not find About page version label")
-        self.assertEqual(cmake_match.group(1), about_match.group(1))
+        self.assertIn("CUtils.version", about_text, "About page must use dynamic CUtils.version logic")
 
     def test_validation_scripts_referenced_by_docs_exist(self) -> None:
         contributing_text = (ROOT / ".github" / "CONTRIBUTING.md").read_text(encoding="utf-8")
