@@ -43,7 +43,11 @@ PageBase {
                 Layout.fillWidth: true
                 text: qsTr("Desktop lyrics")
                 checked: Config.background.desktopLyrics.enabled
-                onToggled: GlobalConfig.background.desktopLyrics.enabled = checked
+                onToggled: {
+                    GlobalConfig.background.desktopLyrics.enabled = checked;
+                    if (!checked)
+                        GlobalConfig.background.desktopLyrics.autoHide = false;
+                }
             }
 
             ToggleRow {
@@ -61,7 +65,11 @@ PageBase {
                 Layout.fillWidth: true
                 text: qsTr("Background visualiser")
                 checked: Config.background.visualiser.enabled
-                onToggled: GlobalConfig.background.visualiser.enabled = checked
+                onToggled: {
+                    GlobalConfig.background.visualiser.enabled = checked;
+                    if (!checked)
+                        GlobalConfig.background.visualiser.autoHide = false;
+                }
             }
 
             ToggleRow {
