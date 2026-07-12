@@ -85,7 +85,7 @@ print_line
 echo
 echo -e "${YELLOW}Next steps:${RST}"
 echo -e "  1) Log out now, then log back in."
-echo -e "  2) If a kernel update occurred, reboot immediately. If no update occured, we still recommend a reboot to ensure all changes take effect."
+echo -e "  2) If a kernel update occurred, reboot immediately."
 echo -e "  3) Remove all KDE panels after login (Super+D -> panel config)."
 echo -e "  4) To enter desktop edit mode later: Super+D -> right click desktop."
 echo
