@@ -67,7 +67,7 @@ REPO="$HOME/.cache/caelestia-update-repo"
 if [ ! -d "$REPO" ]; then
     git clone --bare --filter=blob:none https://github.com/ladybug-me/caelestia-dots-kde.git "$REPO" >/dev/null 2>&1
 else
-    git -C "$REPO" fetch origin "$CURRENT_BRANCH:$CURRENT_BRANCH" >/dev/null 2>&1
+    git -C "$REPO" fetch --force origin "$CURRENT_BRANCH:$CURRENT_BRANCH" >/dev/null 2>&1
 fi
 
 resolve_version() {

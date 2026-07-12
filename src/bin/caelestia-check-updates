@@ -37,7 +37,7 @@ if [ -n "$_localCommit" ]; then
     if [ ! -d "$REPO" ]; then
         git clone --bare --filter=blob:none https://github.com/ladybug-me/caelestia-dots-kde.git "$REPO" >/dev/null 2>&1
     else
-        git -C "$REPO" fetch origin "$BRANCH:$BRANCH" >/dev/null 2>&1
+        git -C "$REPO" fetch --force origin "$BRANCH:$BRANCH" >/dev/null 2>&1
     fi
 
     LOCAL_DATE=$(git -C "$REPO" show -s --format=%cI ${_localCommit} 2>/dev/null)
