@@ -130,10 +130,23 @@ echo
 info "The core shell and bridge scripts have been updated without touching your personal KDE settings."
 echo
 echo "Restarting bridge and shell to apply changes..."
+
+if command -v caelestia >/dev/null 2>&1; then
+    CAELESTIA_BIN=$(command -v caelestia)
+elif [[ -f "$HOME/.local/bin/caelestia" ]]; then
+    CAELESTIA_BIN="$HOME/.local/bin/caelestia"
+elif [[ -f "/usr/local/bin/caelestia" ]]; then
+    CAELESTIA_BIN="/usr/local/bin/caelestia"
+elif [[ -f "/usr/bin/caelestia" ]]; then
+    CAELESTIA_BIN="/usr/bin/caelestia"
+else
+    CAELESTIA_BIN="caelestia"
+fi
+
 systemctl --user restart qs-kwin-bridge.service 2>/dev/null || true
-caelestia shell -k 2>/dev/null || true
+"$CAELESTIA_BIN" shell -k 2>/dev/null || true
 sleep 2
-caelestia shell -d >/dev/null 2>&1 &
+"$CAELESTIA_BIN" shell -d >/dev/null 2>&1 &
 echo "Shell restarted successfully!"
 echo
 echo "If the shell doesn't start, please restart it manually by running: caelestia shell -d"

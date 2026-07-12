@@ -10,16 +10,29 @@ echo ""
 echo "  Step 10/11  Autostart Setup"
 echo ""
 
+# Determine the path of caelestia to avoid PATH differences at login.
+if command -v caelestia >/dev/null 2>&1; then
+    CAELESTIA_PATH=$(command -v caelestia)
+elif [ -f "$HOME/.local/bin/caelestia" ]; then
+    CAELESTIA_PATH="$HOME/.local/bin/caelestia"
+elif [ -f "/usr/local/bin/caelestia" ]; then
+    CAELESTIA_PATH="/usr/local/bin/caelestia"
+elif [ -f "/usr/bin/caelestia" ]; then
+    CAELESTIA_PATH="/usr/bin/caelestia"
+else
+    CAELESTIA_PATH="caelestia"
+fi
+
 #  Caelestia Shell autostart 
 # Uses `caelestia shell -d`: starts Caelestia shell as a daemon
 # detaches it from the autostart process so KDE doesn't wait for it.
 echo "  Creating Caelestia Shell autostart entry..."
-cat > "$AUTOSTART_DIR/caelestiashell.desktop" << 'EOF'
+cat > "$AUTOSTART_DIR/caelestiashell.desktop" << EOF
 [Desktop Entry]
 Type=Application
 Name=Caelestia Shell
 Comment=Start Caelestia Shell
-Exec=bash -c 'sleep 2 && caelestia shell -d &'
+Exec=bash -c 'sleep 2 && "$CAELESTIA_PATH" shell -d &'
 Icon=quickshell
 Hidden=false
 NoDisplay=false
