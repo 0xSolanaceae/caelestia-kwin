@@ -216,20 +216,11 @@ PageBase {
             }
 
             NavRow {
-                icon: "extension"
-                label: qsTr("Desktop Addons")
-                status: qsTr("Clock, Lyrics, Visualiser, Shimeji")
-                onClicked: root.nState.openSubPage(8)
-            }
-
-
-
-            NavRow {
                 last: true
                 icon: "style"
                 label: qsTr("Appearance")
                 status: qsTr("Islands, Pitch Black, Transparency, Dark Theme")
-                onClicked: root.nState.openSubPage(10)
+                onClicked: root.nState.openSubPage(8)
             }
         }
     }
