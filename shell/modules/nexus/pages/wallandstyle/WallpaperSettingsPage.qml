@@ -27,13 +27,6 @@ PageBase {
         }
 
         ToggleRow {
-            text: qsTr("Desktop icons")
-            checked: Config.background.desktopIconsEnabled
-            onToggled: GlobalConfig.background.desktopIconsEnabled = checked
-            enabled: Config.background.wallpaperEnabled
-        }
-
-        ToggleRow {
             text: Strings.localizeEnglishSpelling(qsTr("Recolour wallpaper"))
             subtext: Strings.localizeEnglishSpelling(qsTr("Tint the wallpaper to match static colour schemes"))
             checked: Config.background.wallpaperRecolor

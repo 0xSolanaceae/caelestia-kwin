@@ -197,7 +197,7 @@ PageBase {
                 first: true
                 icon: "settings_suggest"
                 label: qsTr("Wallpaper Settings")
-                status: qsTr("Display, Recolour, Desktop Icons")
+                status: qsTr("Display and Recolour")
                 onClicked: root.nState.openSubPage(5)
             }
 
