@@ -194,7 +194,9 @@ void ClipboardManager::clearHistory() {
         if (cacheDir.exists() && !cacheDir.removeRecursively()) {
             qCWarning(lcClipboard) << "Failed to clear clipboard image cache:" << m_imageCacheDir;
         }
-        QDir().mkpath(m_imageCacheDir);
+        if (!QDir().mkpath(m_imageCacheDir)) {
+            qCWarning(lcClipboard) << "Failed to recreate clipboard image cache directory:" << m_imageCacheDir;
+        }
 
         emit clearHistoryFinished(true);
         m_wipeProc->deleteLater();
