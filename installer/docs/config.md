@@ -4,7 +4,7 @@
 
 1. Open `installer/theme.json`
 2. Modify the JSON values to your liking
-3. Run `./setup.sh` to see the changes instantly—no C++ recompilation required!
+3. Run `bash setup.sh` to see the changes instantly—automated C++ recompilation.
 
 **Minimal config structure:**
 ```json
