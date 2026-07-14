@@ -84,15 +84,16 @@ class InstallerTests(unittest.TestCase):
             self.assertTrue((ROOT / rel_path).is_file(), f"Missing installer entrypoint: {rel_path.as_posix()}")
 
     def test_setup_references_existing_step_scripts(self) -> None:
-        setup_text = (ROOT / "setup.sh").read_text(encoding="utf-8")
-        matches = re.findall(r'run_step\s+"[^"]+"\s+"\$(SCRIPTS_DIR|BUNDLE_DIR)/([^"]+)"', setup_text)
+        runner_text = (ROOT / "installer/src/Runner.cpp").read_text(encoding="utf-8")
+        matches = re.findall(r'\{"[^"]+",\s*"(scripts/[^"]+)",\s*"[^"]+"\}', runner_text)
 
-        self.assertTrue(matches, "No installer steps found in setup.sh")
+        self.assertTrue(matches, "No installer steps found in Runner.cpp")
 
-        for base_dir, rel_path in matches:
+        for rel_path in matches:
             normalized = Path(rel_path.replace("\\", "/"))
-            resolved = ROOT / ("scripts" if base_dir == "SCRIPTS_DIR" else "") / normalized
-            self.assertTrue(resolved.is_file(), f"Missing installer step referenced by setup.sh: {resolved.relative_to(ROOT).as_posix()}")
+            resolved = ROOT / normalized
+            self.assertTrue(resolved.is_file(), f"Missing installer step referenced by Runner.cpp: {resolved.relative_to(ROOT).as_posix()}")
+
 
 
 if __name__ == "__main__":
