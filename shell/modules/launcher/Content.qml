@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import Caelestia
 import Caelestia.Config
 import qs.components
@@ -17,6 +18,22 @@ Item {
 
     readonly property int padding: Tokens.padding.large
     readonly property int rounding: Tokens.rounding.extraLarge
+    readonly property bool isClipboardMode: search.text.startsWith(`${GlobalConfig.launcher.actionPrefix}clipboard `)
+
+    function clearClipboardHistory(): void {
+        Clipboard.clearHistory();
+    }
+
+    Connections {
+        target: Clipboard
+
+        function onClearHistoryFinished(success: bool): void {
+            if (success)
+                Toaster.toast(qsTr("Clipboard history cleared"), "", "delete");
+            else
+                Toaster.toast(qsTr("Failed to clear clipboard history"), "", "error");
+        }
+    }
 
     implicitWidth: listWrapper.width + padding * 2
     implicitHeight: searchWrapper.height + listWrapper.height + padding + searchWrapper.anchors.bottomMargin
@@ -56,7 +73,7 @@ Item {
         anchors.margins: root.padding
         anchors.bottomMargin: CUtils.clamp(root.padding - Config.border.thickness, 0, root.padding)
 
-        implicitHeight: Math.max(searchIcon.implicitHeight, search.implicitHeight, clearIcon.implicitHeight)
+        implicitHeight: Math.max(searchIcon.implicitHeight, search.implicitHeight, clearClipboardIcon.implicitHeight, clearIcon.implicitHeight)
 
         MaterialIcon {
             id: searchIcon
@@ -73,7 +90,7 @@ Item {
             id: search
 
             anchors.left: searchIcon.right
-            anchors.right: clearIcon.left
+            anchors.right: clearClipboardIcon.left
             anchors.leftMargin: Tokens.spacing.small
             anchors.rightMargin: Tokens.spacing.small
 
@@ -158,6 +175,58 @@ Item {
         }
 
         MaterialIcon {
+            id: clearClipboardIcon
+
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.right: clearIcon.left
+            anchors.rightMargin: Tokens.spacing.small
+
+            width: (root.isClipboardMode && Clipboard.items.length > 0) ? implicitWidth : implicitWidth / 2
+            opacity: {
+                if (!root.isClipboardMode || Clipboard.items.length === 0)
+                    return 0;
+                if (clipboardMouse.pressed)
+                    return 0.7;
+                if (clipboardMouse.containsMouse)
+                    return 0.8;
+                return 1;
+            }
+
+            text: "delete"
+            color: Colours.palette.m3onSurfaceVariant
+
+            MouseArea {
+                id: clipboardMouse
+
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: (root.isClipboardMode && Clipboard.items.length > 0) ? Qt.PointingHandCursor : undefined
+
+                onClicked: {
+                    if (!root.isClipboardMode || Clipboard.items.length === 0)
+                        return;
+
+                    if (GlobalConfig.launcher.confirmClearClipboard)
+                        clearClipboardConfirmPopup.open();
+                    else
+                        root.clearClipboardHistory();
+                }
+            }
+
+            Behavior on width {
+                Anim {
+                    type: Anim.StandardSmall
+                }
+            }
+
+            Behavior on opacity {
+                Anim {
+                    type: Anim.StandardSmall
+                }
+            }
+        }
+
+        MaterialIcon {
             id: clearIcon
 
             anchors.verticalCenter: parent.verticalCenter
@@ -199,6 +268,57 @@ Item {
                     type: Anim.StandardSmall
                 }
             }
+        }
+    }
+
+    Popup {
+        id: clearClipboardConfirmPopup
+
+        modal: true
+        focus: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        x: Math.round((root.width - width) / 2)
+        y: Math.round((root.height - height) / 2)
+
+        padding: Tokens.padding.large
+
+        contentItem: Column {
+            spacing: Tokens.spacing.medium
+
+            StyledText {
+                text: qsTr("Clear clipboard history?")
+                font: Tokens.font.body.builders.large.weight(Font.Medium).build()
+            }
+
+            StyledText {
+                text: qsTr("This removes all clipboard entries.")
+                color: Colours.palette.m3onSurfaceVariant
+                font: Tokens.font.body.small
+            }
+
+            Row {
+                spacing: Tokens.spacing.small
+
+                TextButton {
+                    text: qsTr("Cancel")
+                    onClicked: clearClipboardConfirmPopup.close()
+                }
+
+                TextButton {
+                    text: qsTr("Clear")
+                    type: TextButton.Filled
+                    onClicked: {
+                        clearClipboardConfirmPopup.close();
+                        root.clearClipboardHistory();
+                    }
+                }
+            }
+        }
+
+        background: StyledRect {
+            radius: Tokens.rounding.large
+            color: Colours.palette.m3surfaceContainer
         }
     }
 }

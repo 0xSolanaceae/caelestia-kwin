@@ -156,4 +156,67 @@ void ClipboardManager::decodeImage(int id, const QString& outPath) {
     proc->start();
 }
 
+void ClipboardManager::clearHistory() {
+    // Stop any in-flight list process before wiping history.
+    if (m_listProc && m_listProc->state() != QProcess::NotRunning) {
+        m_listProc->kill();
+        m_listProc->waitForFinished(200);
+        m_listProc->deleteLater();
+        m_listProc = nullptr;
+    }
+
+    if (m_wipeProc && m_wipeProc->state() != QProcess::NotRunning) {
+        qCWarning(lcClipboard) << "cliphist wipe already in progress";
+        return;
+    }
+
+    m_wipeProc = new QProcess(this);
+    m_wipeProc->setProgram("cliphist");
+    m_wipeProc->setArguments({"wipe"});
+
+    connect(m_wipeProc, &QProcess::finished, this, [this](int exitCode, QProcess::ExitStatus exitStatus) {
+        const bool success = (exitStatus == QProcess::NormalExit && exitCode == 0);
+
+        if (!success) {
+            qCWarning(lcClipboard) << "cliphist wipe failed with exit code" << exitCode;
+            // Reload to keep UI and backend state in sync when wipe fails.
+            reload();
+            emit clearHistoryFinished(false);
+            m_wipeProc->deleteLater();
+            m_wipeProc = nullptr;
+            return;
+        }
+
+        m_items.clear();
+        emit itemsChanged();
+
+        QDir cacheDir(m_imageCacheDir);
+        if (cacheDir.exists() && !cacheDir.removeRecursively()) {
+            qCWarning(lcClipboard) << "Failed to clear clipboard image cache:" << m_imageCacheDir;
+        }
+        if (!QDir().mkpath(m_imageCacheDir)) {
+            qCWarning(lcClipboard) << "Failed to recreate clipboard image cache directory:" << m_imageCacheDir;
+        }
+
+        emit clearHistoryFinished(true);
+        m_wipeProc->deleteLater();
+        m_wipeProc = nullptr;
+    });
+
+    connect(m_wipeProc, &QProcess::errorOccurred, this, [this](QProcess::ProcessError err) {
+        qCWarning(lcClipboard) << "cliphist wipe process error:" << err;
+
+        if (err == QProcess::FailedToStart && m_wipeProc) {
+            // Prevent duplicate completion handling if a finished signal follows.
+            m_wipeProc->disconnect(this);
+            m_wipeProc->deleteLater();
+            m_wipeProc = nullptr;
+            reload();
+            emit clearHistoryFinished(false);
+        }
+    });
+
+    m_wipeProc->start();
+}
+
 } // namespace caelestia::services
