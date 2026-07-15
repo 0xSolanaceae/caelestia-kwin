@@ -218,7 +218,7 @@ PageBase {
 
                 StyledProgressBar {
                     Layout.fillWidth: true
-                    visible: root.updateRunning || (root.updateProgress > 0.0 && root.updateProgress < 1.0)
+                    visible: root.updateRunning
                     value: root.updateProgress
                     indeterminate: root.updateProgress === 0.0 && root.updateRunning
                 }
