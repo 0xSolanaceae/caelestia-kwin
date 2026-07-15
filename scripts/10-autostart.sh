@@ -4,40 +4,44 @@
 
 AUTOSTART_DIR="$HOME/.config/autostart"
 mkdir -p "$AUTOSTART_DIR"
+mkdir -p "$HOME/.local/bin"
 
 echo
 echo ""
 echo "  Step 10/11  Autostart Setup"
 echo ""
 
-# Determine the path of caelestia to avoid PATH differences at login.
-if command -v caelestia >/dev/null 2>&1; then
-    CAELESTIA_PATH=$(command -v caelestia)
-elif [ -x "$HOME/.local/bin/caelestia" ]; then
-    CAELESTIA_PATH="$HOME/.local/bin/caelestia"
-elif [ -x "/usr/local/bin/caelestia" ]; then
-    CAELESTIA_PATH="/usr/local/bin/caelestia"
-elif [ -x "/usr/bin/caelestia" ]; then
-    CAELESTIA_PATH="/usr/bin/caelestia"
-else
-    CAELESTIA_PATH="caelestia"
+SHELL_CONFIG="$HOME/.config/quickshell/caelestia/shell.qml"
+
+if [[ ! -f "$SHELL_CONFIG" ]]; then
+    echo "  [ERR]  Caelestia Shell entrypoint not found: $SHELL_CONFIG" >&2
+    echo "         Run scripts/08-build-shell.sh before configuring autostart." >&2
+    exit 1
 fi
 
-#  Caelestia Shell autostart 
-# Uses `caelestia shell -d`: starts Caelestia shell as a daemon
-# detaches it from the autostart process so KDE doesn't wait for it.
+# Determine the path of quickshell to avoid PATH differences at login.
+if command -v quickshell >/dev/null 2>&1; then
+    QUICKSHELL_PATH="$(command -v quickshell)"
+elif command -v qs >/dev/null 2>&1; then
+    QUICKSHELL_PATH="$(command -v qs)"
+elif [ -x "/usr/bin/quickshell" ]; then
+    QUICKSHELL_PATH="/usr/bin/quickshell"
+elif [ -x "/usr/local/bin/quickshell" ]; then
+    QUICKSHELL_PATH="/usr/local/bin/quickshell"
+else
+    echo "  [ERR]  Quickshell is not installed or is not available in PATH." >&2
+    exit 127
+fi
+
+# Caelestia Shell autostart
+# Launch the shell built by 08-build-shell.sh directly. This avoids depending
+# on the distro's caelestia-cli version or its config-directory resolution.
 echo "  Creating Caelestia Shell autostart entry..."
 cat > "$HOME/.local/bin/caelestia-autostart.sh" << EOF
 #!/bin/bash
 export QML2_IMPORT_PATH="\$HOME/.local/lib/qt6/qml"
-STATE_DIR="\${XDG_STATE_HOME:-\$HOME/.local/state}/caelestia"
-SCHEME_FILE="\$STATE_DIR/scheme.json"
-i=0
-while [ \$i -lt 15 ] && [ ! -s "\$SCHEME_FILE" ]; do
-    sleep 1
-    i=\$((i + 1))
-done
-"$CAELESTIA_PATH" shell -d &
+export CAELESTIA_LIB_DIR="\$HOME/.local/lib/caelestia"
+exec "$QUICKSHELL_PATH" -d -n -p "\$HOME/.config/quickshell/caelestia/shell.qml"
 EOF
 chmod +x "$HOME/.local/bin/caelestia-autostart.sh"
 
