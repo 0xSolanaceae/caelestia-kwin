@@ -34,28 +34,36 @@ namespace Runner {
         {"Autostart entries", "scripts/10-autostart.sh", "PENDING"},
     };
 
-    string show_error_dialog(const string& step_name, int term_w, int term_h) {
-        int w = 50, h = 8;
-        int x = (term_w - w) / 2;
-        int y = (term_h - h) / 2;
+    string show_error_dialog(const string& step_name, const string& script_path, int term_w, int term_h) {
         int selected = 0;
         vector<string> opts = {"Retry", "Ignore", "Exit"};
+        
+        int pad_x = 4;
+        int pad_y = 2;
 
         while (true) {
-            if (g_resized) { Term::get_size(); g_resized = false; }
+            if (g_resized) { Term::get_size(); g_resized = false; term_w = g_term_width; term_h = g_term_height; }
             
-            cout << Draw::sync_start();
-            int w = 60, h = 10;
-            int x = (g_term_width - w) / 2;
-            int y = (g_term_height - h) / 2;
-            Draw::box(x, y, w, h, "ERROR", "red");
-            Draw::text(x + 2, y + 2, "Step failed: " + step_name, "white");
+            cout << Draw::sync_start() << Draw::clear();
             
+            int w = term_w - pad_x * 2;
+            int h = term_h - pad_y * 2;
+            if (w < 20 || h < 10) { cout << Draw::sync_end() << flush; return "Exit"; }
+            
+            Draw::box(pad_x, pad_y, w, h, "INSTALLATION ERROR", "red", "white");
+            
+            Draw::text(pad_x + 2, pad_y + 2, "Step failed:", "red");
+            Draw::text(pad_x + 2, pad_y + 3, step_name, "bold_white");
+            
+            Draw::text(pad_x + 2, pad_y + 5, "Script at fault:", "red");
+            Draw::text(pad_x + 2, pad_y + 6, script_path, "bold_white");
+            
+            int opt_start_y = pad_y + 9;
             for (size_t i = 0; i < opts.size(); ++i) {
                 if (i == (size_t)selected) {
-                    Draw::text(x + 5 + i*12, y + 5, "> " + opts[i], "green");
+                    Draw::text(pad_x + 4 + i*12, opt_start_y, "> " + opts[i], "green");
                 } else {
-                    Draw::text(x + 5 + i*12, y + 5, "  " + opts[i]);
+                    Draw::text(pad_x + 4 + i*12, opt_start_y, "  " + opts[i], "white");
                 }
             }
             cout << Draw::sync_end() << flush;
@@ -63,8 +71,9 @@ namespace Runner {
             string key = Input::wait_key();
             if (key == "KEY_left") { if (selected > 0) selected--; }
             else if (key == "KEY_right") { if (selected < opts.size() - 1) selected++; }
-            else if (key == "KEY_right") { if (selected > opts.size() - 1) selected++; }
-            else if (key == "enter") return opts[selected];
+            else if (key == "enter") {
+                return opts[selected];
+            }
         }
     }
 
@@ -217,7 +226,7 @@ namespace Runner {
         // are already exported correctly as "true" or "false" by the dynamic UI!
         
         if (getenv("CAELESTIA_TMUX_MASTER") != nullptr) {
-            system("tmux split-window -h -t caelestia_install \"bash -c 'clear; echo \\\"Waiting for installer...\\\"; exec 3<> /tmp/caelestia_cmd; while read -u 3 -r cmd; do if [[ \\\"\\$cmd\\\" == \\\"EXIT\\\" ]]; then break; fi; eval \\\"\\$cmd\\\"; echo \\$? > /tmp/caelestia_status; done'\"");
+            system("tmux split-window -h -t caelestia_install \"bash -c 'trap \\\":\\\" SIGINT SIGQUIT SIGTSTP; clear; echo \\\"Waiting for installer...\\\"; exec 3<> /tmp/caelestia_cmd; while read -u 3 -r cmd; do if [[ \\\"\\$cmd\\\" == \\\"EXIT\\\" ]]; then break; fi; eval \\\"\\$cmd\\\"; echo \\$? > /tmp/caelestia_status; done'\"");
             system("tmux select-pane -t caelestia_install:0.0");
             this_thread::sleep_for(chrono::milliseconds(50)); // tiny wait for terminal resize propagation
             g_resized = true; // force UI redraw after split
@@ -232,6 +241,18 @@ retry_step:
             
             // Forward command to the right pane
             if (getenv("CAELESTIA_TMUX_MASTER") != nullptr) {
+                // Fail-safe: check if the right pane is dead (no reader on FIFO)
+                int test_fd = open("/tmp/caelestia_cmd", O_WRONLY | O_NONBLOCK);
+                if (test_fd == -1 && errno == ENXIO) {
+                    // Pane crashed previously, recreate it so variables and state are retained on retry!
+                    system("tmux split-window -h -t caelestia_install \"bash -c 'trap \\\":\\\" SIGINT SIGQUIT SIGTSTP; clear; echo \\\"Waiting for installer...\\\"; exec 3<> /tmp/caelestia_cmd; while read -u 3 -r cmd; do if [[ \\\"\\$cmd\\\" == \\\"EXIT\\\" ]]; then break; fi; eval \\\"\\$cmd\\\"; echo \\$? > /tmp/caelestia_status; done'\"");
+                    system("tmux select-pane -t caelestia_install:0.0");
+                    this_thread::sleep_for(chrono::milliseconds(50));
+                    g_resized = true;
+                } else if (test_fd != -1) {
+                    close(test_fd);
+                }
+
                 FILE* cmd_fifo = fopen("/tmp/caelestia_cmd", "w");
                 if (cmd_fifo) {
                     auto safe_env = [](const char* name) {
@@ -273,6 +294,17 @@ retry_step:
                             break;
                         }
                     }
+                    
+                    // Fail-safe check: did the tmux pane crash while we were waiting?
+                    int test_fd = open("/tmp/caelestia_cmd", O_WRONLY | O_NONBLOCK);
+                    if (test_fd == -1 && errno == ENXIO) {
+                        exit_code = 1; // treat as failure
+                        if (status_fd >= 0) close(status_fd);
+                        break;
+                    } else if (test_fd != -1) {
+                        close(test_fd);
+                    }
+                    
                     this_thread::sleep_for(chrono::milliseconds(100));
                     
                     // Handle Ctrl+C gracefully
@@ -296,7 +328,7 @@ retry_step:
                     steps[i].status = "FAILED";
                     draw_progress_ui(i);
                     
-                    string action = show_error_dialog(steps[i].name, g_term_width, g_term_height);
+                    string action = show_error_dialog(steps[i].name, steps[i].script_path, g_term_width, g_term_height);
                     if (action == "Retry") {
                         goto retry_step;
                     } else if (action == "Ignore") {
@@ -315,7 +347,7 @@ retry_step:
                     steps[i].status = "FAILED";
                     draw_progress_ui(i);
                     
-                    string action = show_error_dialog(steps[i].name, g_term_width, g_term_height);
+                    string action = show_error_dialog(steps[i].name, steps[i].script_path, g_term_width, g_term_height);
                     if (action == "Retry") {
                         goto retry_step;
                     } else if (action == "Ignore") {
