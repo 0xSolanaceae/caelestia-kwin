@@ -197,6 +197,10 @@ BACKUP_DIR="$BUNDLE_DIR/backups"
 BACKUP_FILE="$BACKUP_DIR/kglobalshortcutsrc_$(date +%Y%m%d_%H%M%S)"
 
 SWHKDRC_FILE="$SCRIPT_DIR/shortcuts.md"
+IPC_HELPER_SOURCE="$BUNDLE_DIR/src/bin/caelestia-shell-ipc"
+IPC_HELPER_DEST="$HOME/.local/bin/caelestia-shell-ipc"
+KEYD_RUNNER_SOURCE="$BUNDLE_DIR/src/bin/caelestia-keyd-run"
+KEYD_RUNNER_DEST="$HOME/.local/bin/caelestia-keyd-run"
 
 echo
 echo "========================================================"
@@ -352,11 +356,25 @@ if [[ ! -f "$SWHKDRC_FILE" ]]; then
     exit 1
 fi
 
+if [[ ! -f "$IPC_HELPER_SOURCE" ]]; then
+    err "Caelestia IPC helper not found at $IPC_HELPER_SOURCE!"
+    exit 1
+fi
+
+if [[ ! -f "$KEYD_RUNNER_SOURCE" ]]; then
+    err "keyd command runner not found at $KEYD_RUNNER_SOURCE!"
+    exit 1
+fi
+
+install -Dm755 "$IPC_HELPER_SOURCE" "$IPC_HELPER_DEST"
+install -Dm755 "$KEYD_RUNNER_SOURCE" "$KEYD_RUNNER_DEST"
+
 
 cat << 'EOF' > /tmp/convert_to_keyd.py
 import sys, os
 import shlex
 import shutil
+import pwd
 
 def parse_key(k):
     k = k.strip().lower()
@@ -375,16 +393,15 @@ def parse_key(k):
     keys = [p for p in parts if p not in ['meta', 'control', 'alt', 'shift']]
     return mods, keys[0] if keys else ''
 
-uid = os.environ.get('UID', '1000')
 user = os.environ.get('USER', __import__('getpass').getuser())
-wayland_display = os.environ.get('WAYLAND_DISPLAY', 'wayland-0')
-display = os.environ.get('DISPLAY', ':0')
+user_home = pwd.getpwnam(user).pw_dir
 runuser_cmd = (
     shutil.which('runuser')
     or ('/usr/sbin/runuser' if os.path.exists('/usr/sbin/runuser') else None)
     or ('/usr/bin/runuser' if os.path.exists('/usr/bin/runuser') else None)
     or 'runuser'
 )
+keyd_runner = os.path.join(user_home, ".local/bin/caelestia-keyd-run")
 
 lines = open(sys.argv[1]).read().strip().split('\n')
 sections = {'main': []}
@@ -414,16 +431,18 @@ while i < len(parsed_lines):
     if section not in sections:
         sections[section] = []
         
-    cmd = cmd.replace("~", f"/home/{user}")
+    cmd = cmd.replace("~", user_home)
     wrapped = (
-        f"{runuser_cmd} -u {user} -- env "
-        f"WAYLAND_DISPLAY={wayland_display} "
-        f"DISPLAY={display} "
-        f"XDG_RUNTIME_DIR=/run/user/{uid} "
-        f"DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/{uid}/bus "
+        f"{runuser_cmd} -u {shlex.quote(user)} -- {shlex.quote(keyd_runner)} "
         f"sh -lc {shlex.quote(cmd)}"
     )
-    sections[section].append(f"{k} = command({wrapped})")
+    entry = f"{k} = command({wrapped})"
+    if len(entry) > 256:
+        raise SystemExit(
+            f"keyd command for '{key}' is {len(entry)} characters; "
+            "the maximum supported length is 256"
+        )
+    sections[section].append(entry)
 
 # Keep right shift as right shift for MangoHud and other keycode-sensitive apps.
 if "rightshift = rightshift" not in sections["main"]:

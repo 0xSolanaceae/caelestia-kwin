@@ -83,16 +83,18 @@ QJsonArray parseKeyd() {
             else if (v.contains("wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%-")) { category = "Volume"; desc = "Down"; }
             else if (v.contains("wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+")) { category = "Volume"; desc = "Up"; }
             else if (v.contains("systemctl suspend-then-hibernate")) { category = "Session"; desc = "Suspend then hibernate"; }
-            else if (v.contains("caelestia shell drawers toggle session")) { category = "Shell"; desc = "Toggle session menu"; }
-            else if (v.contains("caelestia shell drawers toggle launcher")) { category = "Shell"; desc = "Toggle launcher"; }
-            else if (v.contains("caelestia clipboard")) { category = "Shell"; desc = "Open clipboard"; }
-            else if (v.contains("caelestia emoji -p")) { category = "Utilities"; desc = "Emoji picker"; }
-            else if (v.contains("caelestia shell shortcuts open")) { category = "Shell"; desc = "Show shortcuts"; }
-            else if (v.contains("caelestia shell drawers toggle screenshot")) { category = "Shell"; desc = "Toggle screenshot"; }
+            else if (v.contains("drawers toggle session")) { category = "Shell"; desc = "Toggle session menu"; }
+            else if (v.contains("drawers toggle launcher")) { category = "Shell"; desc = "Toggle launcher"; }
+            else if (v.contains("launcher action clipboard") || v.contains("caelestia clipboard")) { category = "Shell"; desc = "Open clipboard"; }
+            else if (v.contains("launcher action emoji") || v.contains("caelestia emoji -p")) { category = "Utilities"; desc = "Emoji picker"; }
+            else if (v.contains("launcher action keybinds") || v.contains("caelestia shell shortcuts open")) { category = "Shell"; desc = "Show shortcuts"; }
+            else if (v.contains("launcher action wallpaper")) { category = "Shell"; desc = "Open wallpaper selector"; }
+            else if (v.contains("region screenshot") || v.contains("drawers toggle screenshot")) { category = "Shell"; desc = "Toggle screenshot"; }
+            else if (v.contains("region recordWithSound")) { category = "Shell"; desc = "Record region with sound"; }
             else if (v.contains("caelestia screenshot -f")) { category = "Utilities"; desc = "Screenshot"; }
             else if (v.contains("kcolorpicker -a")) { category = "Utilities"; desc = "Pick color #RRGGBB >> clipboard"; }
-            else if (v.contains("caelestia shell region search")) { category = "Shell"; desc = "Google Lens"; }
-            else if (v.contains("caelestia shell drawers toggle sidebar")) { category = "Shell"; desc = "Toggle sidebar"; }
+            else if (v.contains("region search")) { category = "Shell"; desc = "Google Lens"; }
+            else if (v.contains("drawers toggle sidebar")) { category = "Shell"; desc = "Toggle sidebar"; }
             
             QJsonObject bindObj;
             bindObj["description"] = category + ": " + desc;

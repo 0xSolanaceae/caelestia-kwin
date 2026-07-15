@@ -44,42 +44,42 @@ super + 0
 super + shift + l
     systemctl suspend-then-hibernate
 ctrl + alt + delete
-    caelestia shell drawers toggle session
+    ~/.local/bin/caelestia-shell-ipc drawers toggle session
 ```
 ## OLD GUIs
 #    caelestia clipboard    
 
 ## TO RUN ANY OTHER COMMAND PRESENT IN launcher's command menu
-# map any shortcut to qs -c caelestia ipc call launcher action <command name>
+# map any shortcut to ~/.local/bin/caelestia-shell-ipc launcher action <command name>
 
 ## Desktop & Shell UI
 ```ini
 super + space
-    caelestia shell drawers toggle launcher
+    ~/.local/bin/caelestia-shell-ipc drawers toggle launcher
 super + v
-    qs -c caelestia ipc call launcher action clipboard
+    ~/.local/bin/caelestia-shell-ipc launcher action clipboard
 super + shift + v
-    qs -c caelestia ipc call launcher action emoji
+    ~/.local/bin/caelestia-shell-ipc launcher action emoji
 super + alt + v
-    caelestia emoji -p
+    ~/.local/bin/caelestia-shell-ipc launcher action emoji
 super + slash
-    qs -c caelestia ipc call launcher action keybinds
+    ~/.local/bin/caelestia-shell-ipc launcher action keybinds
 super + ctrl + t
-    qs -c caelestia ipc call launcher action wallpaper
+    ~/.local/bin/caelestia-shell-ipc launcher action wallpaper
 ```
 
 ## Screenshots & Recording
 ```ini
 super + shift + s
-    caelestia shell region screenshot
+    ~/.local/bin/caelestia-shell-ipc region screenshot
 super + ctrl + s
-    caelestia record -s
+    ~/.local/bin/caelestia-shell-ipc region recordWithSound
 super + shift + a
-    caelestia shell region search
+    ~/.local/bin/caelestia-shell-ipc region search
 super + b
-    caelestia shell drawers toggle sidebar
+    ~/.local/bin/caelestia-shell-ipc drawers toggle sidebar
 super + shift + c
     ~/.local/bin/kcolorpicker -a
 print
-    caelestia shell region screenshot
+    ~/.local/bin/caelestia-shell-ipc region screenshot
 ```
