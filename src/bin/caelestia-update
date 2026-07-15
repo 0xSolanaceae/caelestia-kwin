@@ -8,6 +8,17 @@ info() { echo "[INFO]  $*"; }
 ok()   { echo "[OK]    $*"; }
 warn() { echo "[WARN]  $*"; }
 
+run_stage() {
+    local timeout_seconds="$1"
+    shift
+
+    if command -v timeout >/dev/null 2>&1; then
+        timeout --foreground "$timeout_seconds" "$@"
+    else
+        "$@"
+    fi
+}
+
 BRANCH="${1:-main}"
 TARGET_REF="${2:-}"
 if [ "$BRANCH" != "main" ] && [ "$BRANCH" != "dev" ]; then
@@ -20,7 +31,13 @@ if ! git ls-remote --exit-code --heads https://github.com/ladybug-me/caelestia-d
 fi
 
 if [ -n "$TARGET_REF" ]; then
-    if ! git ls-remote --exit-code --tags https://github.com/ladybug-me/caelestia-dots-kde.git "$TARGET_REF" >/dev/null 2>&1; then
+    if git ls-remote --exit-code --tags https://github.com/ladybug-me/caelestia-dots-kde.git "$TARGET_REF" >/dev/null 2>&1; then
+        TARGET_KIND="tag"
+    elif [ "$BRANCH" = "dev" ] && [[ "$TARGET_REF" =~ ^[0-9a-f]{7,40}$ ]]; then
+        # Dev branch supports installing/reverting to a specific commit from the
+        # timeline, not just tagged releases.
+        TARGET_KIND="commit"
+    else
         echo "Warning: Version tag '$TARGET_REF' not found on remote. Ignoring target and using branch head."
         TARGET_REF=""
     fi
@@ -62,6 +79,24 @@ EOF
 chmod +x "$UPD_DIR/bin/sudo"
 export PATH="$UPD_DIR/bin:$PATH"
 
+# --- Prime privilege escalation once, then keep it alive ---
+# Several steps below need root (system package update, the shell install
+# step). Authenticate once up front and refresh the cached credential in the
+# background so later sudo calls (which can happen well after the initial
+# prompt, e.g. after a long shell build) reuse it instead of prompting again.
+if [ "$EUID" -ne 0 ] && { [ -t 1 ] || command -v ksshaskpass &> /dev/null; }; then
+    info "Requesting administrator privileges (used for system update and installing the shell)..."
+    "$UPD_DIR/bin/sudo" -v || die "Failed to obtain administrator privileges."
+    (
+        while kill -0 "$$" 2>/dev/null; do
+            sleep 60
+            sudo -n true 2>/dev/null
+        done
+    ) &
+    SUDO_KEEPALIVE_PID=$!
+    trap '[ -n "${SUDO_KEEPALIVE_PID:-}" ] && kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true' EXIT
+fi
+
 # 1. Fetch from GitHub
 echo "PROGRESS: 1/5: Fetching updates from GitHub..."
 info "Checking for local repository cache..."
@@ -91,7 +126,18 @@ echo ".github/version.env" >> .git/info/sparse-checkout
 echo ".gitmodules" >> .git/info/sparse-checkout
 
 # Safer fetch and reset instead of pull
-if [ -n "$TARGET_REF" ]; then
+if [ -n "$TARGET_REF" ] && [ "${TARGET_KIND:-}" = "commit" ]; then
+    # Arbitrary commit target: the local clone is normally shallow (depth 1), so
+    # pull enough history to cover the commit timeline shown in the UI
+    # (UpdateChecker fetches up to 150 commits) rather than trying to unshallow.
+    git fetch -q --depth=200 origin "$BRANCH" || die "Failed to fetch repository"
+    if git cat-file -e "$TARGET_REF^{commit}" 2>/dev/null; then
+        git reset --hard -q "$TARGET_REF" || die "Failed to apply commit $TARGET_REF"
+    else
+        warn "Commit '$TARGET_REF' not found on '$BRANCH'; falling back to branch head."
+        git reset --hard -q origin/"$BRANCH" || die "Failed to apply updates"
+    fi
+elif [ -n "$TARGET_REF" ]; then
     git fetch -q --depth 1 origin "refs/tags/$TARGET_REF:refs/tags/$TARGET_REF" || die "Failed to fetch version tag"
     git reset --hard -q "$TARGET_REF" || die "Failed to apply version $TARGET_REF"
 else
@@ -136,8 +182,9 @@ echo "---------------------------------------------"
 if [[ "${CAELESTIA_SKIP_DEPLOY:-0}" == "1" ]]; then
     info "Skipping deploy-configs per user settings."
 else
-    bash "$UPD_DIR/repo/scripts/03-deploy-configs.sh" || die "Config deployment failed."
+    run_stage 900 bash "$UPD_DIR/repo/scripts/03-deploy-configs.sh" || die "Config deployment failed or timed out."
 fi
+echo "PROGRESS: 3/5: Configuration files deployed."
 
 # 5. Build Shell
 echo "PROGRESS: 4/5: Building Caelestia Shell UI..."
@@ -148,7 +195,22 @@ echo "---------------------------------------------"
 if [[ "${CAELESTIA_SKIP_BUILD:-0}" == "1" ]]; then
     info "Skipping build-shell per user settings."
 else
-    bash "$UPD_DIR/repo/scripts/08-build-shell.sh" || warn "Shell build reported an error, but continuing."
+    run_stage 3600 bash "$UPD_DIR/repo/scripts/08-build-shell.sh" || die "Shell build failed or timed out."
+
+    # Fail fast if QML module install is incomplete, otherwise shell startup fails
+    # with 'module "Caelestia.Config" is not installed'.
+    QML_BASE="$HOME/.local/lib/qt6/qml"
+    CONFIG_MODULE_DIR="$QML_BASE/Caelestia/Config"
+    if [[ ! -f "$CONFIG_MODULE_DIR/qmldir" ]]; then
+        die "Installed QML module metadata missing at $CONFIG_MODULE_DIR/qmldir"
+    fi
+
+    shopt -s nullglob
+    CONFIG_PLUGIN_FILES=("$CONFIG_MODULE_DIR"/*.so)
+    shopt -u nullglob
+    if [[ ${#CONFIG_PLUGIN_FILES[@]} -eq 0 ]]; then
+        die "Installed Caelestia.Config plugin library missing in $CONFIG_MODULE_DIR"
+    fi
 fi
 
 # 6. Save current commit hash

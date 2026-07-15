@@ -2,6 +2,7 @@ pragma Singleton
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtCore
 import Quickshell
 import Quickshell.Io
 import Caelestia
@@ -22,9 +23,24 @@ Singleton {
     property string currentVersion: "unknown"
     property string previousVersion: "unknown"
     property string targetVersion: ""
+    property string installedCommitHash: ""
 
     property string _localCommit: ""
     property bool loaded: false
+
+    // ── Update process state ────────────────────────────────────────────
+    // Lives on the singleton (rather than UpdatesPage) so it survives the
+    // page being destroyed/recreated when the user navigates to a different
+    // top-level Nexus page and back (see Pages.qml `loadPage`).
+    property string updateLogs: ""
+    property bool updateRunning: false
+    property bool updateCancelled: false
+    property real updateProgress: 0.0
+    property string updateStatus: ""
+    property bool logsExpanded: false
+    property double lastUpdateOutputMs: 0
+    property bool stallNoticeShown: false
+    property string processLineBuffer: ""
 
     function clampBranch(branch: string): string {
         return (branch === "dev" || branch === "main") ? branch : "main";
@@ -224,15 +240,20 @@ for t in tags:
     }
     print("RELEASE_JSON|" + json.dumps(out, separators=(",", ":"), ensure_ascii=False))
 PY
-elif [ -n "$LOCAL_COMMIT" ]; then
-    LOCAL_DATE=$(git -C "$REPO" show -s --format=%cI "$LOCAL_COMMIT" 2>/dev/null)
-    if [ -n "$LOCAL_DATE" ]; then
-        git -C "$REPO" log --format="%h|%s|%an|%cI" --since="$LOCAL_DATE" "$LOCAL_COMMIT..$CURRENT_BRANCH" 2>/dev/null || echo ""
-    else
-        git -C "$REPO" log --format="%h|%s|%an|%cI" "$LOCAL_COMMIT..$CURRENT_BRANCH" 2>/dev/null || echo ""
-    fi
 else
-    echo ""
+    # Dev branch: emit the full recent commit history (not just commits ahead of
+    # the installed one) so the UI can render a git-log-style timeline with
+    # past/current/available state, same as the version list does for main.
+    DEV_LOG_LIMIT=150
+    git -C "$REPO" log --format="COMMIT%x1f%H%x1f%h%x1f%s%x1f%an%x1f%cI%x1f%P" -n "$DEV_LOG_LIMIT" "$CURRENT_BRANCH" 2>/dev/null
+    if [ -n "$LOCAL_COMMIT" ]; then
+        AHEAD_COUNT="$(git -C "$REPO" rev-list --count "$LOCAL_COMMIT..$CURRENT_BRANCH" 2>/dev/null || echo 0)"
+    else
+        AHEAD_COUNT=0
+    fi
+    [ -n "$AHEAD_COUNT" ] || AHEAD_COUNT=0
+    echo "AHEAD|$AHEAD_COUNT"
+    echo "LOCAL|$LOCAL_COMMIT"
 fi
 `
     gitProcess.command = ["bash", "-c", bashCmd, "update-check", currentBranch];
@@ -242,6 +263,85 @@ fi
     function reload() {
         loaded = false;
         localCommitProcess.running = true;
+    }
+
+    function handleProgressLine(rawLine: string): void {
+        const line = rawLine.trim();
+        if (line === "")
+            return;
+
+        const progressMatch = line.match(/PROGRESS:\s*(done.*|\d+\/\d+:\s*.+)$/);
+        if (progressMatch) {
+            const pText = progressMatch[1].trim();
+            if (pText.startsWith("done")) {
+                root.updateProgress = 1.0;
+                root.updateStatus = qsTr("Done!");
+                return;
+            }
+
+            const stageMatch = pText.match(/^(\d+)\/(\d+):\s*(.+)$/);
+            if (stageMatch) {
+                const current = parseInt(stageMatch[1]);
+                const total = parseInt(stageMatch[2]);
+                if (total > 0) {
+                    root.updateProgress = current / total;
+                    root.updateStatus = stageMatch[3];
+                }
+            }
+            return;
+        }
+
+        // Fallback: mark deploy stage as finished when deploy script confirms completion.
+        if (line.indexOf("Config deployment complete") !== -1 && root.updateProgress < 0.8) {
+            root.updateProgress = 0.7;
+            root.updateStatus = qsTr("Preparing shell build...");
+        }
+    }
+
+    function ingestProcessText(rawText: string): void {
+        root.lastUpdateOutputMs = Date.now();
+        root.stallNoticeShown = false;
+
+        const cleaned = rawText
+            .replace(/\u001b\[[0-9;?]*[A-Za-z]/g, "")
+            .replace(/\r/g, "\n");
+
+        const chunk = cleaned.endsWith("\n") ? cleaned : (cleaned + "\n");
+        root.updateLogs += chunk;
+
+        const combined = root.processLineBuffer + chunk;
+        const lines = combined.split("\n");
+        root.processLineBuffer = lines.pop();
+
+        for (let i = 0; i < lines.length; i++) {
+            root.handleProgressLine(lines[i]);
+        }
+    }
+
+    function startUpdate(targetVersion: string): void {
+        if (root.updateRunning)
+            return;
+        root.targetVersion = targetVersion;
+        root.updateCancelled = false;
+        root.updateLogs = "";
+        root.updateProgress = 0.0;
+        root.updateStatus = qsTr("Starting…");
+        root.updateRunning = true;
+        root.lastUpdateOutputMs = Date.now();
+        root.stallNoticeShown = false;
+        root.processLineBuffer = "";
+        root.logsExpanded = true;
+        updateProcess.running = true;
+    }
+
+    function stopUpdate(): void {
+        if (!root.updateRunning)
+            return;
+        root.updateCancelled = true;
+        updateProcess.running = false;
+        root.updateRunning = false;
+        root.updateStatus = qsTr("Cancelled");
+        root.updateLogs += "\n[Cancelled by user]";
     }
 
     // Process to read local commit and saved branch
@@ -274,6 +374,7 @@ fi
                     let parsedPendingCount = 0;
                     let parsedHasUpdate = false;
                     let parsedVersionSummaryMode = root.currentBranch === "main";
+                    let parsedLocalCommitFull = "";
                     root.availableBranches = ["main", "dev"];
                     
                     for (let i = 0; i < lines.length; i++) {
@@ -347,6 +448,33 @@ fi
                             parsedVersions.push(tag);
                             continue;
                         }
+                        if (line.startsWith("COMMIT\u001f")) {
+                            // COMMIT<US>fullHash<US>shortHash<US>subject<US>author<US>date<US>parents
+                            const parts = line.split("\u001f");
+                            parsedVersionSummaryMode = false;
+                            const parentsField = (parts[6] || "").trim();
+                            const parentCount = parentsField === "" ? 0 : parentsField.split(/\s+/).length;
+                            parsedCommits.push({
+                                hash: parts[2] || "",
+                                fullHash: parts[1] || "",
+                                subject: parts[3] || "",
+                                author: parts[4] || "",
+                                date: new Date(parts[5]).toLocaleString(Qt.locale(), Locale.ShortFormat),
+                                isMerge: parentCount > 1
+                            });
+                            continue;
+                        }
+                        if (line.startsWith("LOCAL|")) {
+                            parsedLocalCommitFull = line.substring(6).trim();
+                            continue;
+                        }
+                        if (line.startsWith("AHEAD|")) {
+                            const count = parseInt(line.substring(6).trim());
+                            parsedVersionSummaryMode = false;
+                            parsedPendingCount = isNaN(count) ? 0 : count;
+                            parsedHasUpdate = parsedPendingCount > 0;
+                            continue;
+                        }
                         const parts = line.split("|");
                         if (parts.length >= 4) {
                             parsedVersionSummaryMode = false;
@@ -358,16 +486,18 @@ fi
                             });
                         }
                     }
-                    
-                    if (!parsedHasUpdate && !parsedVersionSummaryMode) {
-                        parsedPendingCount = parsedCommits.length;
-                        parsedHasUpdate = parsedPendingCount > 0;
+
+                    if (!parsedVersionSummaryMode && parsedLocalCommitFull === "") {
+                        // No installed commit on record yet: can't say what's pending.
+                        parsedPendingCount = 0;
+                        parsedHasUpdate = false;
                     }
+                    root.installedCommitHash = parsedVersionSummaryMode ? "" : parsedLocalCommitFull;
 
                     const dedupedCommits = [];
                     const seenKeys = new Set();
                     for (let i = 0; i < parsedCommits.length; i++) {
-                        const key = `${parsedCommits[i].hash}|${parsedCommits[i].subject}`;
+                        const key = parsedCommits[i].fullHash || `${parsedCommits[i].hash}|${parsedCommits[i].subject}`;
                         if (seenKeys.has(key))
                             continue;
                         seenKeys.add(key);
@@ -414,4 +544,65 @@ fi
         }
     }
 
+    Settings {
+        id: updaterSettings
+        category: "Updater"
+        property bool deployConfigs: true
+        property bool buildShell: true
+    }
+
+    Timer {
+        interval: 30000
+        repeat: true
+        running: root.updateRunning
+        onTriggered: {
+            if (!root.updateRunning) return;
+            if (root.lastUpdateOutputMs <= 0) return;
+            const idleMs = Date.now() - root.lastUpdateOutputMs;
+            if (idleMs >= 120000 && !root.stallNoticeShown) {
+                root.stallNoticeShown = true;
+                root.updateLogs += "[WARN] No updater output for 120s. If this persists, stop and retry.\n";
+            }
+        }
+    }
+
+    Process {
+        id: updateProcess
+        command: [Paths.absolutePath("~/.local/bin/caelestia-update"), root.currentBranch]
+            .concat(root.targetVersion !== "" ? [root.targetVersion] : [])
+        environment: ({
+            CAELESTIA_SKIP_DEPLOY: updaterSettings.deployConfigs ? "0" : "1",
+            CAELESTIA_SKIP_BUILD: updaterSettings.buildShell ? "0" : "1"
+        })
+        stdout: SplitParser {
+            onRead: function(text) {
+                root.ingestProcessText(text);
+            }
+        }
+        stderr: SplitParser {
+            onRead: function(text) {
+                root.ingestProcessText(text);
+            }
+        }
+        onExited: function(code) {
+            if (root.processLineBuffer !== "") {
+                root.handleProgressLine(root.processLineBuffer);
+                root.processLineBuffer = "";
+            }
+            root.updateRunning = false;
+            root.lastUpdateOutputMs = 0;
+            if (root.updateCancelled) {
+                root.updateCancelled = false;
+                root.updateStatus = qsTr("Cancelled");
+                return;
+            }
+            if (code === 0) {
+                Toaster.toast(qsTr("Update Successful"), qsTr("The update is complete. Please log out to apply changes."), "done");
+                root.reload();
+            } else {
+                root.updateStatus = qsTr("Update failed (exit code %1)").arg(code);
+                Toaster.toast(qsTr("Update Failed"), qsTr("The update script returned error code %1").arg(code), "error");
+            }
+        }
+    }
 }
