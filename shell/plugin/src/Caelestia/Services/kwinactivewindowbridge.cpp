@@ -92,7 +92,7 @@ KWinActiveWindowBridge::KWinActiveWindowBridge(QObject *parent) : QObject(parent
     new KWinActiveWindowBridgeAdaptor(this);
     
     QDBusConnection bus = QDBusConnection::sessionBus();
-    bus.registerObject("/dev/caelestia/KWinActiveWindow", this, QDBusConnection::ExportAllSlots | QDBusConnection::ExportAllSignals | QDBusConnection::ExportAllProperties);
+    bus.registerObject("/dev/caelestia/KWinActiveWindow", this, QDBusConnection::ExportAllSlots | QDBusConnection::ExportAllSignals | QDBusConnection::ExportAllProperties | QDBusConnection::ExportAdaptors);
     bus.registerService("dev.caelestia.KWinActiveWindow");
     
     injectKWinScript();
