@@ -116,7 +116,8 @@ PanelWindow {
 
     // Config
     property bool isCircleSelection: (root.selectionMode === RegionSelection.SelectionMode.Circle)
-    property bool enableWindowRegions: true && !isCircleSelection
+    property bool showWindowOutlines: false
+    property bool enableWindowRegions: showWindowOutlines && !isCircleSelection
     property bool enableLayerRegions: true && !isCircleSelection
     property bool enableContentRegions: false
 

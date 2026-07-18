@@ -1,35 +1,33 @@
 #include "kwinactivewindowbridge.hpp"
+#include <QCoreApplication>
+#include <QDateTime>
+#include <QDebug>
+#include <QDir>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QTemporaryFile>
 #include <QtDBus/QDBusConnection>
 #include <QtDBus/QDBusMessage>
 #include <QtDBus/QDBusReply>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QJsonArray>
-#include <QCoreApplication>
-#include <QTemporaryFile>
-#include <QDateTime>
-#include <QDir>
-#include <QDebug>
 
 namespace caelestia::services {
 
-KWinActiveWindowBridgeAdaptor::KWinActiveWindowBridgeAdaptor(QObject *parent)
-    : QDBusAbstractAdaptor(parent)
-{
-}
+KWinActiveWindowBridgeAdaptor::KWinActiveWindowBridgeAdaptor(QObject* parent)
+    : QDBusAbstractAdaptor(parent) {}
 
-void KWinActiveWindowBridgeAdaptor::notifyActiveWindow(const QString &uuid, const QString &title, const QString &appClass, const QString &activeOutputName) {
+void KWinActiveWindowBridgeAdaptor::notifyActiveWindow(
+    const QString& uuid, const QString& title, const QString& appClass, const QString& activeOutputName) {
     if (auto* bridge = qobject_cast<KWinActiveWindowBridge*>(parent())) {
         bridge->updateActiveWindow(uuid, title, appClass, activeOutputName);
     }
 }
 
-void KWinActiveWindowBridgeAdaptor::notifyWindowList(const QString &windowsJson) {
+void KWinActiveWindowBridgeAdaptor::notifyWindowList(const QString& windowsJson) {
     if (auto* bridge = qobject_cast<KWinActiveWindowBridge*>(parent())) {
         bridge->updateWindowList(windowsJson);
     }
 }
-
 
 static const QString kScriptSource = R"js(
 const BUS = "dev.caelestia.KWinActiveWindow";
@@ -58,6 +56,7 @@ function notifyWindowList() {
         let w = wins[i];
         if (w.normalWindow) {
             let deskId = "";
+            if (w.resourceClass === "quickshell") continue;
             if (w.desktops && w.desktops.length > 0) {
                 let d = w.desktops[0];
                 deskId = String(d.id || d.name || d);
@@ -88,19 +87,23 @@ notifyActiveWindow();
 notifyWindowList();
 )js";
 
-KWinActiveWindowBridge::KWinActiveWindowBridge(QObject *parent) : QObject(parent) {
+KWinActiveWindowBridge::KWinActiveWindowBridge(QObject* parent)
+    : QObject(parent) {
     new KWinActiveWindowBridgeAdaptor(this);
-    
+
     QDBusConnection bus = QDBusConnection::sessionBus();
-    bus.registerObject("/dev/caelestia/KWinActiveWindow", this, QDBusConnection::ExportAllSlots | QDBusConnection::ExportAllSignals | QDBusConnection::ExportAllProperties | QDBusConnection::ExportAdaptors);
+    bus.registerObject("/dev/caelestia/KWinActiveWindow", this,
+        QDBusConnection::ExportAllSlots | QDBusConnection::ExportAllSignals | QDBusConnection::ExportAllProperties |
+            QDBusConnection::ExportAdaptors);
     bus.registerService("dev.caelestia.KWinActiveWindow");
-    
+
     injectKWinScript();
 }
 
 KWinActiveWindowBridge::~KWinActiveWindowBridge() {
     if (!m_scriptName.isEmpty()) {
-        QDBusMessage msg = QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "unloadScript");
+        QDBusMessage msg =
+            QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "unloadScript");
         msg << m_scriptName;
         QDBusConnection::sessionBus().call(msg, QDBus::NoBlock);
     }
@@ -114,7 +117,7 @@ QString KWinActiveWindowBridge::activeOutputName() const {
     return m_activeOutputName;
 }
 
-void KWinActiveWindowBridge::setActiveOutputName(const QString &outputName) {
+void KWinActiveWindowBridge::setActiveOutputName(const QString& outputName) {
     if (m_activeOutputName != outputName) {
         m_activeOutputName = outputName;
         emit activeWindowChanged();
@@ -128,12 +131,9 @@ void KWinActiveWindowBridge::setActiveOutputName(const QString &outputName) {
     }
 }
 
-void KWinActiveWindowBridge::updateActiveWindow(const QString &uuid, const QString &title, const QString &appClass, const QString &activeOutputName) {
-    m_activeWindow = QVariantMap{
-        {"address", uuid},
-        {"title", title},
-        {"class", appClass}
-    };
+void KWinActiveWindowBridge::updateActiveWindow(
+    const QString& uuid, const QString& title, const QString& appClass, const QString& activeOutputName) {
+    m_activeWindow = QVariantMap{ { "address", uuid }, { "title", title }, { "class", appClass } };
     if (m_activeOutputName != activeOutputName) {
         m_activeOutputName = activeOutputName;
         QString runtimeDir = qEnvironmentVariable("XDG_RUNTIME_DIR", "/tmp");
@@ -150,13 +150,13 @@ QVariantList KWinActiveWindowBridge::windowList() const {
     return m_windowList;
 }
 
-void KWinActiveWindowBridge::focusWindow(const QString &address) {
-    QTemporaryFile *tempFile = new QTemporaryFile(QDir::tempPath() + "/caelestia-kwin-focus-XXXXXX.js", this);
+void KWinActiveWindowBridge::focusWindow(const QString& address) {
+    QTemporaryFile* tempFile = new QTemporaryFile(QDir::tempPath() + "/caelestia-kwin-focus-XXXXXX.js", this);
     if (!tempFile->open()) {
         delete tempFile;
         return;
     }
-    
+
     QString scriptSource = QString(R"(
         let wins = workspace.windowList();
         for (let i = 0; i < wins.length; ++i) {
@@ -165,33 +165,38 @@ void KWinActiveWindowBridge::focusWindow(const QString &address) {
                 break;
             }
         }
-    )").arg(address);
-    
+    )")
+                               .arg(address);
+
     tempFile->write(scriptSource.toUtf8());
     QString fileName = tempFile->fileName();
     tempFile->close();
 
-    QString scriptName = "caelestia-focus-" + QString::number(QCoreApplication::applicationPid()) + "-" + QString::number(QDateTime::currentMSecsSinceEpoch());
-    
+    QString scriptName = "caelestia-focus-" + QString::number(QCoreApplication::applicationPid()) + "-" +
+                         QString::number(QDateTime::currentMSecsSinceEpoch());
+
     QDBusConnection bus = QDBusConnection::sessionBus();
-    QDBusMessage loadMsg = QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "loadScript");
+    QDBusMessage loadMsg =
+        QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "loadScript");
     loadMsg << fileName << scriptName;
-    
+
     QDBusReply<int> reply = bus.call(loadMsg);
     if (reply.isValid()) {
         int scriptId = reply.value();
-        QDBusMessage runMsg = QDBusMessage::createMethodCall("org.kde.KWin", QString("/Scripting/Script%1").arg(scriptId), "org.kde.kwin.Script", "run");
+        QDBusMessage runMsg = QDBusMessage::createMethodCall(
+            "org.kde.KWin", QString("/Scripting/Script%1").arg(scriptId), "org.kde.kwin.Script", "run");
         bus.call(runMsg);
-        
-        QDBusMessage unloadMsg = QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "unloadScript");
+
+        QDBusMessage unloadMsg =
+            QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "unloadScript");
         unloadMsg << scriptName;
         bus.asyncCall(unloadMsg); // Clean up immediately after starting
     }
-    
+
     tempFile->deleteLater();
 }
 
-void KWinActiveWindowBridge::updateWindowList(const QString &windowsJson) {
+void KWinActiveWindowBridge::updateWindowList(const QString& windowsJson) {
     QJsonDocument doc = QJsonDocument::fromJson(windowsJson.toUtf8());
     if (doc.isArray()) {
         m_windowList = doc.array().toVariantList();
@@ -208,24 +213,27 @@ void KWinActiveWindowBridge::updateWindowList(const QString &windowsJson) {
 }
 
 void KWinActiveWindowBridge::injectKWinScript() {
-    m_scriptName = "caelestia-active-window-" + QString::number(QCoreApplication::applicationPid()) + "-" + QString::number(QDateTime::currentMSecsSinceEpoch());
-    
+    m_scriptName = "caelestia-active-window-" + QString::number(QCoreApplication::applicationPid()) + "-" +
+                   QString::number(QDateTime::currentMSecsSinceEpoch());
+
     QString scriptPath = QDir::tempPath() + "/caelestia-kwin-bridge.js";
     QFile f(scriptPath);
     if (f.open(QIODevice::WriteOnly)) {
         f.write(kScriptSource.toUtf8());
         f.close();
     }
-    
+
     QDBusConnection bus = QDBusConnection::sessionBus();
-    
-    QDBusMessage loadMsg = QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "loadScript");
+
+    QDBusMessage loadMsg =
+        QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "loadScript");
     loadMsg << scriptPath << m_scriptName;
-    
+
     QDBusReply<int> reply = bus.call(loadMsg);
     if (reply.isValid()) {
         int scriptId = reply.value();
-        QDBusMessage runMsg = QDBusMessage::createMethodCall("org.kde.KWin", QString("/Scripting/Script%1").arg(scriptId), "org.kde.kwin.Script", "run");
+        QDBusMessage runMsg = QDBusMessage::createMethodCall(
+            "org.kde.KWin", QString("/Scripting/Script%1").arg(scriptId), "org.kde.kwin.Script", "run");
         bus.call(runMsg);
     } else {
         qWarning() << "Failed to inject KWin active window script:" << reply.error().message();
