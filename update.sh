@@ -46,10 +46,14 @@ if [ -d "$BUNDLE_DIR/.git" ]; then
 
     if [ -n "${1:-}" ]; then
         BRANCH="$1"
+        if [[ "$BRANCH" != "main" && "$BRANCH" != "dev" ]]; then
+            warn "Branch '$BRANCH' is not allowed. Falling back to main."
+            BRANCH="main"
+        fi
         info "Using provided branch: $BRANCH"
     else
         if [ -t 1 ]; then
-            BRANCHES=$(git -C "$BUNDLE_DIR" branch -r | grep -v '\->' | sed 's/.*origin\///')
+            BRANCHES="main dev"
             echo
             info "Available remote branches (default: main):"
             select BRANCH in $BRANCHES; do
@@ -71,6 +75,14 @@ if [ -d "$BUNDLE_DIR/.git" ]; then
             fi
             info "Auto-detected branch: $BRANCH (GUI Mode)"
         fi
+    fi
+
+    if [[ "$BRANCH" != "main" && "$BRANCH" != "dev" ]]; then
+        warn "Branch '$BRANCH' is not allowed. Falling back to main."
+        BRANCH="main"
+    elif ! git -C "$BUNDLE_DIR" ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+        warn "Remote branch '$BRANCH' not found. Falling back to main."
+        BRANCH="main"
     fi
 
     info "Checking out $BRANCH..."
@@ -130,10 +142,29 @@ echo
 info "The core shell and bridge scripts have been updated without touching your personal KDE settings."
 echo
 echo "Restarting bridge and shell to apply changes..."
+
+if command -v caelestia >/dev/null 2>&1; then
+    CAELESTIA_BIN=$(command -v caelestia)
+elif [[ -x "$HOME/.local/bin/caelestia" ]]; then
+    CAELESTIA_BIN="$HOME/.local/bin/caelestia"
+elif [[ -x "/usr/local/bin/caelestia" ]]; then
+    CAELESTIA_BIN="/usr/local/bin/caelestia"
+elif [[ -x "/usr/bin/caelestia" ]]; then
+    CAELESTIA_BIN="/usr/bin/caelestia"
+else
+    CAELESTIA_BIN="caelestia"
+fi
+
 systemctl --user restart qs-kwin-bridge.service 2>/dev/null || true
-caelestia shell -k 2>/dev/null || true
-sleep 2
-caelestia shell -d >/dev/null 2>&1 &
+"$CAELESTIA_BIN" shell -k 2>/dev/null || true
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/caelestia"
+SCHEME_FILE="$STATE_DIR/scheme.json"
+i=0
+while [[ $i -lt 15 && ! -s "$SCHEME_FILE" ]]; do
+    sleep 1
+    i=$((i + 1))
+done
+"$CAELESTIA_BIN" shell -d >/dev/null 2>&1 &
 echo "Shell restarted successfully!"
 echo
-echo "If the shell doesn't start, please restart it manually by running: caelestia shell -d"
+echo "If the shell doesn't start, please restart it manually by running: $CAELESTIA_BIN shell -d"

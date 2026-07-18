@@ -2,8 +2,6 @@
 
 # C A E L E S T I A <img src="assets/caelestia.svg" width="35" align="top">
 
-<p align="center"> <b>v2.1.0</b> </p>
-
 ### A KDE adaptation of the celestial aesthetic
 
 ![Arch Linux](https://img.shields.io/badge/Arch_Linux-1793d1?logo=arch-linux&logoColor=white&style=for-the-badge)
@@ -184,14 +182,33 @@ https://github.com/user-attachments/assets/9ad2e5f5-f80e-48c0-b65b-a4084bb363c6
     <h2>✦ Customization ✦</h2>
 </div>
 
-- **Wallpaper:** Press `Super + Space` to open the App launcher. Then type `>` to open Caelestia Tweaks and select Wallpaper.
-- **Theme Colors:** Type `>` in app launcher and select `Scheme`. **NOTE:** When switching between dark and light theme, you need to go to `Kde Settings -> Colors & Themes -> Colors` and select Material You Dark or Light based on your preference.
-- **Keyboard Shortcuts:** Modify [`src/keyboardshortcuts/shortcuts.md`](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/src/keyboardshortcuts/shortcuts.md) and execute [`src/keyboardshortcuts/register.sh`](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/src/keyboardshortcuts/register.sh) to apply them.
-  - *Note:* You may need to update `~/.local/bin/hyprctl` for `Super + /` keybindings display.
-- **The Greeter:** The gifs that play on popout of `Good Morning, User` can be customized by going to [`shell/assets/`](https://github.com/ladybug-me/caelestia-dots-kde/tree/main/shell/assets/) and replacing the [morning.gif](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/shell/assets/morning.gif), [evening.gif](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/shell/assets/evening.gif), [afternoon.gif](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/shell/assets/afternoon.gif) and [night.gif](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/shell/assets/night.gif) files.
-Then rebuild the shell by running setup.sh again.
----
+<details>
+  <summary><b>Wallpaper & Slideshow</b></summary></br>
 
+  - Press `Super + Space` to open the App launcher. Then type `>` to open Caelestia Tweaks and select Wallpaper.
+  - For Slideshow, Open `Caelestia Settings -> Wallpaper & style -> Wallpaper slideshow`.
+</details>
+<details>
+  <summary><b>Theme Colors</b></summary></br>
+ 
+  - Type `>` in app launcher and select `Scheme`.
+  - *Note: When switching between dark and light theme, you need to go to `Kde Settings -> Colors & Themes -> Colors` and select Material You Dark or Light based on your preference.*
+</details>
+<details>
+  <summary><b>Keyboard Shortcuts</b></summary></br>
+
+  - Modify [`src/keyboardshortcuts/shortcuts.md`](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/src/keyboardshortcuts/shortcuts.md) and execute [`src/keyboardshortcuts/register.sh`](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/src/keyboardshortcuts/register.sh) to apply them.
+  
+  - *Note: You may need to update `~/.local/bin/hyprctl` for `Super + /` keybindings display.*
+</details>
+<details>
+  <summary><b>The Greeter</b></summary></br>
+
+   - The gifs that play on popout of `Good Morning, User` can be customized by going to [`shell/assets/`](https://github.com/ladybug-me/caelestia-dots-kde/tree/main/shell/assets/) and replacing the [morning.gif](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/shell/assets/morning.gif), [evening.gif](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/shell/assets/evening.gif), [afternoon.gif](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/shell/assets/afternoon.gif) and [night.gif](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/shell/assets/night.gif) files.
+Then rebuild the shell by running setup.sh again.
+</details>
+
+---
 <div align="center">
     <h2>✦ Instructions ✦</h2>
 </div>
@@ -345,12 +362,32 @@ Then rebuild the shell by running setup.sh again.
 </details>
 
 <details>
-  <summary><b>Note for Fedora users: </b></summary>
+  <summary><b>Note for Asahi Linux (MacOS) users: </b></summary>
   <br/>
   
-  - I have done everything, everypatch, every script possible to make it work on fedora but maybe for someone it might require manual intervention. Follow the installer's carefully placed logs to find any issue and fix it manually.
+  - The quickshell version for [Asahi Linux](https://asahilinux.org/) is < 3.0.0 causing the following error:
 
-  - Know that it **works on Fedora**.
+  ```bash
+$ caelestia shell -d
+No running instances for "/home/v0iddd/.config/quickshell/caelestia/shell.qml"
+  INFO: Launching config: "/home/v0iddd/.config/quickshell/caelestia/shell.qml"
+ERROR: Unrecognized pragma "DefaultEnv QS_NO_RELOAD_POPUP=1"
+```
+  - Open `~/.config/quickshell/caelestia/shell.qml`
+  - Change the following lines
+  ```bash
+  //@ pragma DefaultEnv QS_NO_RELOAD_POPUP=1
+  //@ pragma DefaultEnv QS_DROP_EXPENSIVE_FONTS=1
+  //@ pragma DefaultEnv QSG_RENDER_LOOP=threaded
+  //@ pragma DefaultEnv QT_QUICK_FLICKABLE_WHEEL_DECELERATION=10000
+  ```
+  to
+  ```bash
+  //@ pragma Env QS_NO_RELOAD_POPUP=1
+  //@ pragma Env QS_DROP_EXPENSIVE_FONTS=1
+  //@ pragma Env QSG_RENDER_LOOP=threaded
+  //@ pragma Env QT_QUICK_FLICKABLE_WHEEL_DECELERATION=10000
+  ```
 
 </details>
 
@@ -366,6 +403,8 @@ Then rebuild the shell by running setup.sh again.
 - **[Content-Swordfish751](https://www.reddit.com/user/Content-Swordfish751/)** for many important contributions.
 - **[Peace-W](https://github.com/Peace-W)** for Nobara fix.
 - **[dim-ghub](https://github.com/dim-ghub/caelestia-shell)** for the added features in v2.0.0 from his fork.
+- **[nlohmann](https://github.com/nlohmann/json)** for the JSON parser used in the project.
+- **[Haidir](https://bitbucket.org/dirn-typo/yet-another-monochrome-icon-set/src/main/)** for Yet Another Monochrome Icon Set.
 - **[Quickshell](https://quickshell.outfoxxed.me/)** — The robust Qt widget framework.
 - **[Darkly](https://github.com/vinceliuice/Darkly)** — For the gorgeous KDE theme base.
 - **[KDE Plasma](https://kde.org/plasma/)** — The powerhouse desktop environment.

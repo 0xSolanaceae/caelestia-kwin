@@ -1,0 +1,414 @@
+pragma ComponentBehavior: Bound
+
+import QtQuick
+import QtQuick.Layouts
+import Quickshell
+import Quickshell.Wayland
+import Caelestia.Config
+import qs.components
+import qs.components.containers
+import qs.services
+import Qt.labs.folderlistmodel
+import Quickshell.Io
+import qs.components.effects
+
+Item {
+    id: root
+
+    required property ShellScreen screenData
+
+    property int cellWidth: 100
+    property int cellHeight: 120
+
+    // How many columns fit given the grid width
+    function getIconCols() { return Math.max(1, Math.floor(gridItem.width / root.cellWidth)); }
+        
+    // How many rows are occupied
+    function getIconRows() { return Math.max(1, Math.floor(gridItem.height / root.cellHeight)); }
+
+    anchors.fill: parent
+    visible: GlobalConfig.forScreen(screenData.name).background.enabled && GlobalConfig.forScreen(screenData.name).background.wallpaperEnabled && GlobalConfig.forScreen(screenData.name).background.desktopIconsEnabled
+
+    property var savedOrder: []
+    property bool layoutLoaded: false
+
+    Component.onCompleted: { 
+        loadLayoutProc.running = true;
+    }
+
+    Process {
+        id: loadLayoutProc
+        command: ["sh", "-c", "cat ~/.local/share/caelestia/desktop_layout.json 2>/dev/null || echo '[]'"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.savedOrder = JSON.parse(text);
+                } catch (e) {
+                    root.savedOrder = [];
+                }
+                root.layoutLoaded = true;
+                // Reposition existing items if they were loaded before layout
+                for (var i = 0; i < instantiator.count; i++) {
+                    var item = instantiator.objectAt(i);
+                    if (item) item.initPosition();
+                }
+            }
+        }
+    }
+
+    Process {
+        id: saveProc
+        property string jsonContent: ""
+        command: ["python3", "-c", "import sys, os; d = os.path.dirname(sys.argv[1]); os.makedirs(d, exist_ok=True) if d else None; open(sys.argv[1], 'w').write(sys.argv[2])", Quickshell.env("HOME") + "/.local/share/caelestia/desktop_layout.json", jsonContent]
+    }
+
+    function saveLayout() {
+        if (!layoutLoaded) return;
+        let arr = [];
+        for (let i = 0; i < instantiator.count; i++) {
+            let item = instantiator.objectAt(i);
+            if (item) {
+                arr.push({ name: item.fileName, col: item.col, row: item.row });
+            }
+        }
+        saveProc.jsonContent = JSON.stringify(arr);
+        saveProc.running = true;
+    }
+
+    function isCellFree(c, r, ignoreItem) {
+        for (let i = 0; i < instantiator.count; i++) {
+            let item = instantiator.objectAt(i);
+            if (item && item !== ignoreItem && item.col === c && item.row === r) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function findFreeCell() {
+        console.log("findFreeCell called. getIconCols(): " + getIconCols() + ", root.width: " + root.width + ", count: " + instantiator.count);
+        for (let r = 0; r < 1000; r++) {
+            for (let c = 0; c < getIconCols(); c++) {
+                if (isCellFree(c, r, null)) {
+                    console.log("findFreeCell returning: " + c + ", " + r);
+                    return {col: c, row: r};
+                }
+            }
+        }
+        return {col: 0, row: 0};
+    }
+
+    Item {
+        id: gridItem
+        anchors.fill: parent
+        
+        readonly property int barZone: Visibilities.bars.get(root.screenData.name)?.exclusiveZone ?? (Tokens.sizes.bar.innerWidth + Math.max(Tokens.padding.small, Config.border.thickness))
+        readonly property int baseMargin: Tokens.padding.large * 2
+        
+        anchors.margins: baseMargin
+        anchors.leftMargin: Config.bar.position === "left" ? baseMargin + barZone : baseMargin
+        anchors.rightMargin: Config.bar.position === "right" ? baseMargin + barZone : baseMargin
+        anchors.topMargin: Config.bar.position === "top" ? baseMargin + barZone : baseMargin
+        anchors.bottomMargin: Config.bar.position === "bottom" ? baseMargin + barZone : baseMargin
+
+        Instantiator {
+            id: instantiator
+            model: FolderListModel {
+                id: folderModel
+                folder: "file://" + Quickshell.env("HOME") + "/Desktop"
+                showDirsFirst: true
+                nameFilters: ["*"]
+            }
+            onObjectAdded: (index, object) => {
+                object.parent = gridItem;
+            }
+            onObjectRemoved: (index, object) => {
+                object.destroy();
+            }
+
+            delegate: Item {
+                id: delegateItem
+                width: root.cellWidth
+                height: root.cellHeight
+
+                required property string fileName
+                required property string filePath
+                required property bool fileIsDir
+                required property string fileSuffix
+
+                property string path: filePath.replace("file://", "")
+                property string desktopName: fileName
+                property string desktopIcon: ""
+
+                property int col: -1
+                property int row: -1
+
+                x: col * root.cellWidth + (dragHandler.active ? dragHandler.translation.x : 0)
+                y: row * root.cellHeight + (dragHandler.active ? dragHandler.translation.y : 0)
+                
+                z: dragHandler.active ? 10 : 1
+
+                function initPosition() {
+                    if (col !== -1 && row !== -1) return; // already init
+                    
+                    let targetCol = -1;
+                    let targetRow = -1;
+                    let foundSaved = false;
+                    for (let i = 0; i < root.savedOrder.length; i++) {
+                        if (root.savedOrder[i].name === fileName) {
+                            targetCol = root.savedOrder[i].col;
+                            targetRow = root.savedOrder[i].row;
+                            foundSaved = true;
+                            break;
+                        }
+                    }
+                    
+                    if (foundSaved && root.isCellFree(targetCol, targetRow, delegateItem)) {
+                        col = targetCol;
+                        row = targetRow;
+                    } else {
+                        let freeCell = root.findFreeCell();
+                        col = freeCell.col;
+                        row = freeCell.row;
+                        root.saveLayout();
+                    }
+                }
+
+                Component.onCompleted: { console.log("DELEGATE CREATED FOR: " + fileName);
+                    if (root.layoutLoaded) {
+                        initPosition();
+                    }
+                    if (fileName.toLowerCase().endsWith(".desktop")) {
+                        desktopInfoProc.running = true;
+                    }
+                }
+
+                Process {
+                    id: desktopInfoProc
+                    command: ["cat", path]
+                    stdout: StdioCollector {
+                        onStreamFinished: {
+                            var lines = text.trim().split("\n");
+                            var inDesktopEntry = false;
+                            var nameFound = false;
+                            var iconFound = false;
+                            for (var i = 0; i < lines.length; i++) {
+                                var line = lines[i].trim();
+                                if (line === "[Desktop Entry]") {
+                                    inDesktopEntry = true;
+                                    continue;
+                                } else if (line.startsWith("[")) {
+                                    inDesktopEntry = false;
+                                }
+                                
+                                if (inDesktopEntry) {
+                                    if (!nameFound && line.startsWith("Name=")) {
+                                        desktopName = line.substring(5);
+                                        nameFound = true;
+                                    } else if (!iconFound && line.startsWith("Icon=")) {
+                                        desktopIcon = line.substring(5);
+                                        iconFound = true;
+                                    }
+                                }
+                                if (nameFound && iconFound) break;
+                            }
+                        }
+                    }
+                }
+
+                function getIconName(isDir, filename, suffix) {
+                    if (isDir) return "folder";
+                    const ext = suffix.toLowerCase();
+                    const imageExts = ["png", "jpg", "jpeg", "gif", "svg", "webp", "bmp"];
+                    const videoExts = ["mp4", "mkv", "webm", "avi", "mov"];
+                    const archiveExts = ["zip", "tar", "gz", "rar", "7z"];
+                    const audioExts = ["mp3", "wav", "flac", "ogg"];
+                    const codeExts = ["qml", "js", "html", "css", "py", "sh", "cpp", "c", "h", "json"];
+                    
+                    if (ext === "pdf") return "application-pdf";
+                    if (filename.toLowerCase().endsWith(".desktop")) return desktopIcon || "application-x-executable";
+                    if (imageExts.includes(ext)) return "image-x-generic";
+                    if (videoExts.includes(ext)) return "video-x-generic";
+                    if (archiveExts.includes(ext)) return "package-x-generic";
+                    if (audioExts.includes(ext)) return "audio-x-generic";
+                    if (codeExts.includes(ext)) return "text-x-script";
+                    
+                    return "text-x-generic";
+                }
+
+                // Returns the search directories within the icon set, ordered by priority
+                readonly property string iconSetBase: Qt.resolvedUrl(Quickshell.shellDir + "/assets/icons/yet-another-monochrome-icon-set")
+                readonly property var iconSetDirs: ["apps/scalable", "mimetypes/scalable", "places/scalable", "actions/scalable", "devices/scalable", "status/scalable"]
+
+                function getMaterialYouIconUrl(iconName) {
+                    if (!iconName) return "";
+                    for (let i = 0; i < iconSetDirs.length; i++) {
+                        let url = iconSetBase + "/" + iconSetDirs[i] + "/" + iconName + ".svg";
+                        // Qt.resolvedUrl normalises it; we return it for use as Image.source
+                        return url; // try first candidate; Image will report Error and we fallback
+                    }
+                    return "";
+                }
+
+                function getMaterialYouIconUrlByPriority(iconName) {
+                    // Build ordered candidate list: apps first (for .desktop icons), then mimetypes, then places
+                    if (!iconName) return "";
+                    let candidates = [];
+                    for (let i = 0; i < iconSetDirs.length; i++) {
+                        candidates.push(iconSetBase + "/" + iconSetDirs[i] + "/" + iconName + ".svg");
+                    }
+                    return candidates;
+                }
+
+                property bool useMaterialYouIcons: GlobalConfig.forScreen(screenData.name).background.materialYouIconsEnabled
+                property bool useVibrantIcons: GlobalConfig.forScreen(screenData.name).background.materialYouIconsVibrant
+
+                function getIconSource(isDir, filename, suffix) {
+                    if (filename.toLowerCase().endsWith(".desktop") && desktopIcon !== "") {
+                        if (desktopIcon.startsWith("/")) return "file://" + desktopIcon;
+                        if (useMaterialYouIcons) {
+                            return iconSetBase + "/apps/scalable/" + desktopIcon + ".svg";
+                        }
+                        return Quickshell.iconPath(desktopIcon, "application-x-executable");
+                    }
+                    const iconName = getIconName(isDir, filename, suffix);
+                    if (useMaterialYouIcons) {
+                        // For generic types, mimetypes dir has them; for folder, places dir
+                        if (isDir) return iconSetBase + "/places/scalable/folder.svg";
+                        return iconSetBase + "/mimetypes/scalable/" + iconName + ".svg";
+                    }
+                    return "image://icon/" + iconName;
+                }
+
+                function getFallbackIconSource(isDir, filename, suffix) {
+                    if (filename.toLowerCase().endsWith(".desktop") && desktopIcon !== "") {
+                        if (desktopIcon.startsWith("/")) return "file://" + desktopIcon;
+                        return Quickshell.iconPath(desktopIcon, "application-x-executable");
+                    }
+                    return "image://icon/" + getIconName(isDir, filename, suffix);
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: Colours.palette.m3onSurface
+                    opacity: mouseArea.containsMouse || dragHandler.active ? 0.12 : 0
+                    radius: Tokens.rounding.medium
+                    Behavior on opacity { NumberAnimation { duration: 100 } }
+                }
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: Tokens.padding.small
+                    spacing: Tokens.spacing.small
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Image {
+                            id: iconImage
+                            anchors.centerIn: parent
+                            width: 64; height: 64
+                            source: getIconSource(fileIsDir, fileName, fileSuffix)
+                            fillMode: Image.PreserveAspectFit
+                            // Tint with the shell's primary accent when Material You icons are active
+                            layer.enabled: useMaterialYouIcons
+                            layer.effect: Colouriser {
+                                sourceColor: "black"
+                                colorizationColor: {
+                                    let c = Colours.palette.m3primary;
+                                    if (useVibrantIcons) {
+                                        return Qt.hsla(c.hslHue, 1.0, Math.max(0.4, Math.min(0.6, c.hslLightness)), c.a);
+                                    }
+                                    return c;
+                                }
+                            }
+                            // If the Material You SVG is missing, fall back to KDE icon
+                            onStatusChanged: {
+                                if (status === Image.Error && useMaterialYouIcons) {
+                                    layer.enabled = false;
+                                    source = getFallbackIconSource(fileIsDir, fileName, fileSuffix);
+                                }
+                            }
+                        }
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        text: fileName.toLowerCase().endsWith(".desktop") ? desktopName : fileName
+                        color: Colours.palette.m3onSurface
+                        font: Tokens.font.body.small
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.Wrap
+                        maximumLineCount: 2
+                        elide: Text.ElideRight
+                        style: Text.Outline
+                        styleColor: Colours.palette.m3surface
+                    }
+                }
+
+                DragHandler {
+                    id: dragHandler
+                    target: null
+                    
+                    property real lastTranslationX: 0
+                    property real lastTranslationY: 0
+                    
+                    onTranslationChanged: {
+                        if (active) {
+                            lastTranslationX = translation.x;
+                            lastTranslationY = translation.y;
+                        }
+                    }
+                    
+                    onActiveChanged: {
+                        if (!active) {
+                            // Snap to nearest grid cell
+                            let dropX = col * root.cellWidth + lastTranslationX + delegateItem.width / 2;
+                            let dropY = row * root.cellHeight + lastTranslationY + delegateItem.height / 2;
+                            let newCol = Math.floor(dropX / root.cellWidth);
+                            let newRow = Math.floor(dropY / root.cellHeight);
+                            
+                            newCol = Math.max(0, Math.min(newCol, root.getIconCols() - 1));
+                            newRow = Math.max(0, Math.min(newRow, root.getIconRows() - 1));
+
+                            if (!root.isCellFree(newCol, newRow, delegateItem)) {
+                                // Find nearest free cell outwards using a spiral or simple fallback
+                                let found = false;
+                                for (let rad = 1; rad < Math.max(root.getIconCols(), root.getIconRows()); rad++) {
+                                    for (let r = Math.max(0, newRow - rad); r <= Math.min(root.getIconRows() - 1, newRow + rad); r++) {
+                                        for (let c = Math.max(0, newCol - rad); c <= Math.min(root.getIconCols() - 1, newCol + rad); c++) {
+                                            if (root.isCellFree(c, r, delegateItem)) {
+                                                newCol = c; newRow = r; found = true; break;
+                                            }
+                                        }
+                                        if (found) break;
+                                    }
+                                    if (found) break;
+                                }
+                            }
+
+                            col = newCol;
+                            row = newRow;
+                            root.saveLayout();
+                        }
+                    }
+                }
+
+                MouseArea {
+                    id: mouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: (mouse) => {
+                        if (mouse.button === Qt.LeftButton) {
+                            if (fileName.toLowerCase().endsWith(".desktop")) {
+                                Quickshell.execDetached(["kioclient", "exec", path]);
+                            } else {
+                                Quickshell.execDetached(["xdg-open", path]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

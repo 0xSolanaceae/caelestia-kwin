@@ -24,8 +24,24 @@ Item {
     }
 
     Component.onCompleted: {
-        if (root.modelData?.isImage) {
-            Clipboard.ensureImageCached(root.modelData.id);
+        if (!root.modelData?.isImage) return;
+
+        // Check whether the image was already pre-warmed during reload()
+        const cached = Clipboard.getImagePath(root.modelData.id);
+        // FileInfo is not available in QML directly; use a heuristic: if imagePath is
+        // already set by an earlier imageReady emission, we are done. Otherwise listen.
+        // The C++ backend emits imageReady for already-cached files too, so we will
+        // always receive the signal — but set eagerly in case it fires before onCompleted.
+        imagePreview.imagePath = cached;
+    }
+
+    /// Listen for the imageReady signal from the C++ backend (forwarded via Clipboard singleton).
+    /// This fires as soon as the decoded file is fully written — no timers needed.
+    Connections {
+        target: Clipboard
+        function onImageReady(id: int, path: string): void {
+            if (root.modelData?.isImage && id === root.modelData.id)
+                imagePreview.imagePath = path;
         }
     }
 
@@ -58,7 +74,7 @@ Item {
         Item {
             id: imagePreview
 
-            property string imagePath: (root.modelData?.isImage ?? false) ? `${Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"}/caelestia-clipboard/` + (root.modelData?.id ?? "") + ".png" : ""
+            property string imagePath: ""
 
             width: (root.modelData?.isImage ?? false) ? 120 : 0
             height: (root.modelData?.isImage ?? false) ? 80 : 0

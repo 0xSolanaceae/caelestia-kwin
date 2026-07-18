@@ -19,9 +19,9 @@ QtObject {
     id: root
 
     readonly property list<Component> pageComps: [
-        // Appearance
+        // Personalization
         Component {
-            // Wallpaper & style
+            // Appearance
             StackPage {
                 Component {
                     WallpaperAndStyle {}
@@ -38,63 +38,34 @@ QtObject {
                 Component {
                     WallhavenPage {}
                 }
-            }
-        },
-
-        // Connectivity
-        Component {
-            // Network
-            StackPage {
                 Component {
-                    NetworkPage {}
+                    WallpaperSettingsPage {}
+                }
+                Component {
+                    SlideshowAndOrderPage {}
+                }
+                Component {
+                    VideoWallpapersPage {}
+                }
+                Component {
+                    AppearancePage {}
                 }
             }
         },
         Component {
-            // Bluetooth
+            // Desktop
             StackPage {
                 Component {
-                    BluetoothPage {}
+                    DesktopPage {}
                 }
                 Component {
-                    BtDeviceInfo {}
+                    DesktopAddonsPage {}
                 }
                 Component {
-                    BluetoothPairing {}
+                    ContextMenuPage {}
                 }
             }
         },
-        Component {
-            // Audio
-            StackPage {
-                Component {
-                    AudioPage {}
-                }
-                Component {
-                    AppVolumes {}
-                }
-            }
-        },
-
-        // System
-        Component {
-            // Updates
-            StackPage {
-                Component {
-                    UpdatesPage {}
-                }
-            }
-        },
-        Component {
-            // Plugins
-            StackPage {
-                Component {
-                    PluginsPage {}
-                }
-            }
-        },
-
-        // Shell
         Component {
             // Panels
             StackPage {
@@ -142,8 +113,80 @@ QtObject {
                 Component {
                     BarPreviewScales {}
                 }
+                Component {
+                    TaskbarElements {}
+                }
             }
         },
+
+        // Connectivity
+        Component {
+            // Network
+            StackPage {
+                Component {
+                    NetworkPage {}
+                }
+            }
+        },
+        Component {
+            // Bluetooth
+            StackPage {
+                Component {
+                    BluetoothPage {}
+                }
+                Component {
+                    BtDeviceInfo {}
+                }
+                Component {
+                    BluetoothPairing {}
+                }
+            }
+        },
+        Component {
+            // Audio
+            StackPage {
+                Component {
+                    AudioPage {}
+                }
+                Component {
+                    AppVolumes {}
+                }
+            }
+        },
+
+        // Controls
+        Component {
+            // Notifications
+            StackPage {
+                Component {
+                    NotificationsPage {}
+                }
+            }
+        },
+        Component {
+            // Utilities
+            StackPage {
+                Component {
+                    UtilitiesPage {}
+                }
+                Component {
+                    GameModePage {}
+                }
+                Component {
+                    GameModeTargetsPage {}
+                }
+            }
+        },
+        Component {
+            // Power
+            StackPage {
+                Component {
+                    PowerPage {}
+                }
+            }
+        },
+
+        // Shell
         Component {
             // Apps
             StackPage {
@@ -165,15 +208,6 @@ QtObject {
                     ServicesPage {}
                 }
                 Component {
-                    NotificationsPage {}
-                }
-                Component {
-                    GameModePage {}
-                }
-                Component {
-                    GameModeTargetsPage {}
-                }
-                Component {
                     ArpcPage {}
                 }
             }
@@ -187,7 +221,23 @@ QtObject {
             }
         },
 
-        // About
+        // System
+        Component {
+            // Updates
+            StackPage {
+                Component {
+                    UpdatesPage {}
+                }
+            }
+        },
+        Component {
+            // Plugins
+            StackPage {
+                Component {
+                    PluginsPage {}
+                }
+            }
+        },
         Component {
             StackPage {
                 Component {

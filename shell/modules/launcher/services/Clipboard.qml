@@ -11,10 +11,18 @@ QtObject {
 
     readonly property var items: ClipboardManager.items
 
-    readonly property string imageCacheDir: `${Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"}/caelestia-clipboard`
+    /// Forwarded from C++ so QML items can connect to a single source of truth.
+    signal imageReady(int id, string path)
+    signal clearHistoryFinished(bool success)
+
+    readonly property string imageCacheDir: ClipboardManager.imageCacheDir
 
     function reload(): void {
         ClipboardManager.reload();
+    }
+
+    function clearHistory(): void {
+        ClipboardManager.clearHistory();
     }
 
     function getSortedItems(): var {
@@ -37,22 +45,14 @@ QtObject {
         return imageCacheDir + "/" + clipId + ".png";
     }
 
-    function ensureImageCached(id: int, onReady: var): void {
-        const imgPath = getImagePath(id);
-        ClipboardManager.decodeImage(id, imgPath);
-        // Give the async decode a moment to complete then call back
-        Qt.callLater(() => { onReady(imgPath); }, 500);
-    }
-
-    property Connections _conn: Connections {
+    /// Connections block to forward the C++ imageReady signal to the QML world.
+    property var _conn: Connections {
         target: ClipboardManager
-        function onItemsChanged(): void {
-            // Preload all images via the C++ manager (no sh wrapper)
-            for (const item of root.items) {
-                if (item.isImage && item.id) {
-                    ClipboardManager.decodeImage(item.id, root.getImagePath(item.id));
-                }
-            }
+        function onImageReady(id: int, path: string): void {
+            root.imageReady(id, path);
+        }
+        function onClearHistoryFinished(success: bool): void {
+            root.clearHistoryFinished(success);
         }
     }
 }

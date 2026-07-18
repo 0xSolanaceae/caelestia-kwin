@@ -13,7 +13,7 @@ class GeneralApps : public ConfigObject {
     Q_OBJECT
     QML_ANONYMOUS
 
-    CONFIG_GLOBAL_PROPERTY(QStringList, terminal, { u"xdg-open"_s })
+    CONFIG_GLOBAL_PROPERTY(QStringList, terminal, { u"foot"_s })
     CONFIG_GLOBAL_PROPERTY(QStringList, audio, { u"xdg-open"_s })
     CONFIG_GLOBAL_PROPERTY(QStringList, playback, { u"xdg-open"_s })
     CONFIG_GLOBAL_PROPERTY(QStringList, explorer, { u"xdg-open"_s })
@@ -43,6 +43,7 @@ class GeneralIdle : public ConfigObject {
             vmap({
                 { u"timeout"_s, 600 },
                 { u"idleAction"_s, QStringList{ u"suspendThenHibernate"_s } },
+                { u"enabled"_s, false },
             }),
         })
 

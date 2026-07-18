@@ -78,6 +78,7 @@ PageBase {
         }
 
         StepperRow {
+            last: true
             label: qsTr("Drag threshold")
             subtext: qsTr("Pixels dragged before the bar reveals")
             value: GlobalConfig.bar.dragThreshold
@@ -87,7 +88,12 @@ PageBase {
             onMoved: v => GlobalConfig.bar.dragThreshold = v
         }
 
+        SectionHeader {
+            text: Strings.localizeEnglishSpelling(qsTr("Scaling"))
+        }
+
         StepperRow {
+            first: true
             label: qsTr("Bar scale")
             subtext: qsTr("Scales taskbar thickness and component sizing")
             value: GlobalConfig.bar.scale
@@ -138,59 +144,17 @@ PageBase {
         NavRow {
             first: true
             icon: "view_agenda"
-            label: qsTr("Toggle & rearrange")
+            label: qsTr("Toggle & Rearrange")
             status: qsTr("Add, remove or reorder components")
             onClicked: root.nState.openSubPage(5)
         }
 
         NavRow {
-            icon: "workspaces"
-            label: qsTr("Workspaces")
-            status: qsTr("Indicators, window icons")
-            onClicked: root.nState.openSubPage(6)
-        }
-
-        NavRow {
-            icon: "web_asset"
-            label: qsTr("Active window")
-            status: qsTr("Title display, popout")
-            onClicked: root.nState.openSubPage(7)
-        }
-
-        NavRow {
-            icon: "dock"
-            label: qsTr("Dock")
-            status: Strings.localizeEnglishSpelling(qsTr("Positioning, recolouring"))
-            onClicked: root.nState.openSubPage(11)
-        }
-
-        NavRow {
-            icon: "widgets"
-            label: qsTr("Tray")
-            status: qsTr("System tray icons")
-            onClicked: root.nState.openSubPage(8)
-        }
-
-        NavRow {
-            icon: "signal_cellular_alt"
-            label: qsTr("Status icons")
-            status: qsTr("Visible indicators")
-            onClicked: root.nState.openSubPage(9)
-        }
-
-        NavRow {
-            icon: "schedule"
-            label: qsTr("Clock")
-            status: qsTr("Date, icon, background")
-            onClicked: root.nState.openSubPage(10)
-        }
-
-        NavRow {
             last: true
-            icon: "code"
-            label: qsTr("GitHub")
-            status: qsTr("Contributions, token setup")
-            onClicked: root.nState.openSubPage(12)
+            icon: "tune"
+            label: qsTr("Elements & Modules")
+            status: qsTr("Workspaces, tray, status icons, clock, dock and more")
+            onClicked: root.nState.openSubPage(14)
         }
 
         // Scroll actions
