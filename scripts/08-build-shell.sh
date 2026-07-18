@@ -109,7 +109,7 @@ ln -sf /usr/lib/libopencv_imgproc.so.5.0.0 /usr/lib/libopencv_imgproc.so.413 2>/
 ln -sf /usr/lib/libopencv_core.so.5.0.0 /usr/lib/libopencv_core.so.413 2>/dev/null || echo "[WARN] Failed to link opencv core"
 
 if ! python3 -c '
-import sys, os, glob
+import sys, os, glob, re
 search_paths = sys.path + glob.glob("'"$USER_HOME"'/.local/lib/python*/site-packages")
 file_path = None
 for p in search_paths:
@@ -129,7 +129,30 @@ try:
         code = code.replace("recording_path.parent.mkdir(parents=True, exist_ok=True)", """recording_path.parent.mkdir(parents=True, exist_ok=True)
         args += ["-fallback-cpu-encoding", "yes"]""")
     
-    code = code.replace("args += [focused_monitor[\"name\"], \"-f\",", "args += [\"portal\", \"-f\",")
+    # Inject KWin focused monitor refresh rate logic
+    kwin_logic = """        import json, os, subprocess
+        focused_rr = 60
+        try:
+            runtime_dir = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+            with open(os.path.join(runtime_dir, "qs_kwin_active_output.txt"), "r") as f:
+                active_output = f.read().strip()
+            kscreen_out = subprocess.check_output(["kscreen-doctor", "-j"], text=True)
+            kscreen_data = json.loads(kscreen_out)
+            for output in kscreen_data.get("outputs", []):
+                if output.get("name") == active_output and output.get("connected"):
+                    for mode in output.get("modes", []):
+                        if mode.get("id") == output.get("currentModeId"):
+                            focused_rr = round(mode.get("refreshRate", 60))
+                            break
+        except Exception:
+            pass
+"""
+    code = code.replace("        monitors = hypr.message(\"monitors\")", kwin_logic)
+
+    # Use portal and the focused_rr
+    code = re.sub(r"focused_monitor = next\(monitor for monitor in monitors if monitor\[\"focused\"\]\)\n\s*if focused_monitor:\n\s*args \+= \[focused_monitor\[\"name\"\]?, \"-f\", str\(round\(focused_monitor\[\"refreshRate\"\]\)\)\]", "args += [\"portal\", \"-f\", str(focused_rr)]", code, flags=re.MULTILINE|re.DOTALL)
+    code = re.sub(r"focused_monitor = next\(monitor for monitor in monitors if monitor\[\"focused\"\]\)\n\s*if focused_monitor:\n\s*args \+= \[\"portal\", \"-f\", str\(round\(focused_monitor\[\"refreshRate\"\]\)\)\]", "args += [\"portal\", \"-f\", str(focused_rr)]", code, flags=re.MULTILINE|re.DOTALL)
+
     code = code.replace("if self.args.region:", "if False:")
     code = code.replace("text=True)", "text=True).strip()")
     code = code.replace("args += [\"region\", \"-region\", region]", "args += [region]")

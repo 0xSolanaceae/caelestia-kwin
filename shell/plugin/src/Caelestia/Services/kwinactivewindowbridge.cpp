@@ -92,7 +92,7 @@ KWinActiveWindowBridge::KWinActiveWindowBridge(QObject *parent) : QObject(parent
     new KWinActiveWindowBridgeAdaptor(this);
     
     QDBusConnection bus = QDBusConnection::sessionBus();
-    bus.registerObject("/dev/caelestia/KWinActiveWindow", this);
+    bus.registerObject("/dev/caelestia/KWinActiveWindow", this, QDBusConnection::ExportAllSlots | QDBusConnection::ExportAllSignals | QDBusConnection::ExportAllProperties);
     bus.registerService("dev.caelestia.KWinActiveWindow");
     
     injectKWinScript();
@@ -118,6 +118,13 @@ void KWinActiveWindowBridge::setActiveOutputName(const QString &outputName) {
     if (m_activeOutputName != outputName) {
         m_activeOutputName = outputName;
         emit activeWindowChanged();
+
+        QString runtimeDir = qEnvironmentVariable("XDG_RUNTIME_DIR", "/tmp");
+        QFile f(runtimeDir + "/qs_kwin_active_output.txt");
+        if (f.open(QIODevice::WriteOnly)) {
+            f.write(outputName.toUtf8());
+            f.close();
+        }
     }
 }
 
@@ -127,7 +134,15 @@ void KWinActiveWindowBridge::updateActiveWindow(const QString &uuid, const QStri
         {"title", title},
         {"class", appClass}
     };
-    m_activeOutputName = activeOutputName;
+    if (m_activeOutputName != activeOutputName) {
+        m_activeOutputName = activeOutputName;
+        QString runtimeDir = qEnvironmentVariable("XDG_RUNTIME_DIR", "/tmp");
+        QFile f(runtimeDir + "/qs_kwin_active_output.txt");
+        if (f.open(QIODevice::WriteOnly)) {
+            f.write(activeOutputName.toUtf8());
+            f.close();
+        }
+    }
     emit activeWindowChanged();
 }
 
