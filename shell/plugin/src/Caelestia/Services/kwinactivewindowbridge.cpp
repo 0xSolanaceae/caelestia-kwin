@@ -38,7 +38,8 @@ const IFACE = "dev.caelestia.KWinActiveWindow";
 
 function notifyActiveWindow() {
     let window = workspace.activeWindow;
-    let out = workspace.activeScreen ? workspace.activeScreen.name : "";
+    let cursorScreen = workspace.screenAt(workspace.cursorPos);
+    let out = cursorScreen ? cursorScreen.name : "";
     if (!window) {
         callDBus(BUS, PATH, IFACE, "notifyActiveWindow", "", "", "", out);
         return;
