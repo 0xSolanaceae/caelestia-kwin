@@ -7,6 +7,7 @@ import Quickshell.Io
 import Caelestia
 import Caelestia.Config
 import Caelestia.Internal
+import Caelestia.Services
 import qs.components.misc
 
 Singleton {
@@ -52,12 +53,29 @@ Singleton {
     readonly property var focusedWorkspace: ({ id: root.mockActiveWs, name: root.mockActiveWs.toString() })
     readonly property var focusedMonitor: {
         let _ = root.monitorState;
+        
+        let targetName = "";
+        if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.activeOutputName) {
+            targetName = KWinActiveWindowBridge.activeOutputName;
+        }
+        
+        if (targetName !== "") {
+            for (let key in root._monitorCache) {
+                if (root._monitorCache[key].name === targetName) {
+                    return root._monitorCache[key];
+                }
+            }
+        }
+        
         for (let key in root._monitorCache) {
             if (root._monitorCache[key].focused) {
                 return root._monitorCache[key];
             }
         }
-        return root._monitorCache[Object.keys(root._monitorCache)[0]];
+        
+        let keys = Object.keys(root._monitorCache);
+        if (keys.length > 0) return root._monitorCache[keys[0]];
+        return null;
     }
     readonly property int activeWsId: focusedWorkspace?.id ?? root.mockActiveWs
 
