@@ -53,6 +53,7 @@ StyledRect {
             placeholderTextColor: Colours.palette.m3onSurfaceVariant
             color: Colours.palette.m3onSurfaceVariant
             font: Tokens.font.body.large
+            onTextChanged: root.nState.searchQuery = text
 
             Binding {
                 target: root.nState
