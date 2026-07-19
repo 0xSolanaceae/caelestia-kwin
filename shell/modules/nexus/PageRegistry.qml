@@ -17,7 +17,7 @@ QtObject {
         {
             label: qsTr("Desktop"),
             icon: "desktop_windows",
-            description: qsTr("Enable Kde Desktop, addons, right click menu"),
+            description: qsTr("Enable KDE Desktop, addons, right click menu"),
             category: "personalization"
         },
         {
