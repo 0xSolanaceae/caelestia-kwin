@@ -73,7 +73,9 @@ Controls.Menu {
 
     function applyEntries(entries, sourceName) {
         const buildStartedAt = Date.now();
-        const normalized = (!entries || entries.length === 0) ? defaultEntries() : cloneEntries(entries);
+        const normalized = (!entries || entries.length === 0)
+            ? cloneEntries(ContextMenuStore.defaultEntries())
+            : cloneEntries(entries);
         const newArr = [];
         const nextEntryByKey = {};
 
@@ -95,10 +97,15 @@ Controls.Menu {
             item.icon = entry.icon || "application-x-executable";
             newArr.push(item);
         }
+        for (const k in root.itemPool) {
+            if (!nextEntryByKey.hasOwnProperty(k)) {
+                root.itemPool[k].destroy();
+                delete root.itemPool[k];
+            }
+        }
 
         root.entryByKey = nextEntryByKey;
         root.dynamicModel = newArr;
-
         const buildMs = Date.now() - buildStartedAt;
         console.log("[perf][DesktopContextMenu] build model source=" + sourceName + " items=" + newArr.length + " ms=" + buildMs);
 
@@ -111,7 +118,7 @@ Controls.Menu {
 
     function reloadMenu(forceDisk) {
         ContextMenuStore.ensureLoaded(forceDisk === true);
-        if (ContextMenuStore.loaded) {
+        if (ContextMenuStore.loaded && !ContextMenuStore.loading) {
             root.applyEntries(ContextMenuStore.entries, forceDisk === true ? "store_disk" : "store_cache");
         }
     }

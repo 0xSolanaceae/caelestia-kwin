@@ -55,7 +55,7 @@ Singleton {
     Process {
         id: readProc
 
-        command: ["cat", root.menuPath]
+        command: ["sh", "-c", "cat \"" + root.menuPath + "\" 2>/dev/null || echo '[]'"]
         running: false
         stdout: StdioCollector {
             onStreamFinished: {
@@ -121,6 +121,7 @@ Singleton {
         printErrors: false
 
         onFileChanged: {
+            if (writeProc.running) return;
             root.cacheValid = false;
             root.ensureLoaded(true);
         }

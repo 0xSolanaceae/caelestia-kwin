@@ -108,10 +108,11 @@ PageBase {
     function load(forceDisk) {
         root.perfLoadStartedAt = Date.now();
         ContextMenuStore.ensureLoaded(forceDisk === true);
-        if (ContextMenuStore.loaded) {
+        if (ContextMenuStore.loaded && !ContextMenuStore.loading) {
             root.applyEntries(ContextMenuStore.entries);
             const source = forceDisk === true ? "store_disk" : "store_cache";
-            console.log("[perf][ContextMenuPage] load source=" + source + " entries=" + ContextMenuStore.entries.length);
+            const loadMs = Date.now() - root.perfLoadStartedAt;
+            console.log("[perf][ContextMenuPage] load source=" + source + " ms=" + loadMs + " entries=" + ContextMenuStore.entries.length);
             root.perfLoadStartedAt = 0;
         }
     }

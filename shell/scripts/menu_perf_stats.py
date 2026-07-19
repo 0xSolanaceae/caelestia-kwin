@@ -8,7 +8,7 @@ PATTERNS = {
     "desktop_open_ms": re.compile(r"\[perf\]\[DesktopContextMenu\] open latency ms=(\d+)") ,
     "desktop_read_parse_ms": re.compile(r"\[perf\]\[DesktopContextMenu\] read\+parse ms=(\d+)"),
     "desktop_build_ms": re.compile(r"\[perf\]\[DesktopContextMenu\] build model .* ms=(\d+)"),
-    "context_load_ms": re.compile(r"\[perf\]\[ContextMenuPage\] load source=disk ms=(\d+)"),
+    "context_load_ms": re.compile(r"\[perf\]\[ContextMenuPage\] load source=[^ ]+ ms=(\d+)"),
     "context_save_ms": re.compile(r"\[perf\]\[ContextMenuPage\] save queued ms=(\d+)"),
     "tray_update_groups_ms": re.compile(r"\[perf\]\[TrayMenu\] updateGroups ms=(\d+)"),
     "tray_open_update_ms": re.compile(r"\[perf\]\[TrayMenu\] open/update latency ms=(\d+)"),
