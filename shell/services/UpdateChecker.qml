@@ -367,13 +367,11 @@ fi
     Process {
         id: gitProcess
         command: []
-        onRunningChanged: {
-            if (!running)
-                root.checkingUpdates = false;
+        onExited: _code => { // qmllint disable signal-handler-parameters
+            root.checkingUpdates = false;
         }
         stdout: StdioCollector {
             onStreamFinished: {
-                root.checkingUpdates = false;
                 try {
                     const lines = text.trim().split("\n");
                     const parsedCommits = [];
