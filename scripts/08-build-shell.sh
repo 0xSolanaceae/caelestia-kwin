@@ -16,14 +16,47 @@ err()  { echo -e "${RED}[ERR]   $*${RST}"; }
 BUNDLE_DIR="${BUNDLE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 SHELL_DIR="$BUNDLE_DIR/shell"
 
-# If the installer is not running, we are likely running an update via caelestia-update
-# Make sure we configure services as well so we don't miss service deployment logic
+
+# UPDATER ONLY BLOCK START
+
+# This is a temp fix, BREAKS REVERTING TO OLDER VERSIONS
+# ANYTHING EXTRA THAT NEEDS TO BE INSTALLED WHEN MAJOR CHANGES HAPPEN,
+# RUN THE REQUIRED UPDATE
+
 if [[ "${CAELESTIA_SETUP_RUNNING:-0}" == "0" ]]; then
     info "Running standalone update mode... deploying services first."
     if [[ -f "$BUNDLE_DIR/scripts/06-services.sh" ]]; then
         bash "$BUNDLE_DIR/scripts/06-services.sh" || warn "06-services.sh failed"
     fi
+
+    info "Installing plasma-wallpaper-application"
+    if [[ -d "$BUNDLE_DIR/src/plasma-wallpaper-application/package" ]]; then
+        kpackagetool6 -t Plasma/Wallpaper -u "$BUNDLE_DIR/src/plasma-wallpaper-application/package" || warn "plasma-wallpaper-application installation failed"
+    else
+        warn "plasma-wallpaper-application not found, Skipping installation"
+    fi
+    if [[ "${CAELESTIA_SKIP_DEPLOY:-0}" == "0" ]]; then
+        info "Configuring KDE Lock Screen to use Caelestia..."
+        if command -v kwriteconfig6 >/dev/null 2>&1 && command -v kpackagetool6 >/dev/null 2>&1; then
+            if kpackagetool6 --list -t Plasma/Wallpaper 2>/dev/null | grep -q "net.dosowisko.PlasmaApplicationWallpaper"; then
+                kwriteconfig6 --file kscreenlockerrc --group Greeter --key WallpaperPlugin net.dosowisko.PlasmaApplicationWallpaper
+                kwriteconfig6 --file kscreenlockerrc --group Greeter --group Wallpaper --group net.dosowisko.PlasmaApplicationWallpaper --group General --key command "quickshell -p $HOME/.config/quickshell/caelestia/lockscreen.qml"
+                kwriteconfig6 --file kscreenlockerrc --group Greeter --group Wallpaper --group net.dosowisko.PlasmaApplicationWallpaper --group General --key fps 1
+                kwriteconfig6 --file kscreenlockerrc --group Greeter --group LnF --group General --key alwaysShowClock false
+                kwriteconfig6 --file kscreenlockerrc --group Greeter --group LnF --group General --key showMediaControls false
+                ok "KDE Lock Screen configured."
+            else
+                warn "plasma-wallpaper-application plugin not installed. Skipping KDE Lock Screen configuration."
+            fi
+        else
+            warn "KDE config tools not found. Skipping KDE Lock Screen configuration."
+        fi
+    else
+        info "KDE Lock Screen configuration skipped."
+    fi
 fi
+
+# UPDATER ONLY BLOCK END
 
 info "Patching Recorder.qml to wait for portal selection..."
 sed -i 's/command: \["pidof", "gpu-screen-recorder"\]/command: \["sh", "-c", "pidof gpu-screen-recorder >\\\/dev\\\/null \&\& test -f $HOME\\\/.local\\\/state\\\/caelestia\\\/record\\\/recording.mp4"\]/g' "$HOME/.local/share/caelestia-shell/services/Recorder.qml" 2>/dev/null || true
