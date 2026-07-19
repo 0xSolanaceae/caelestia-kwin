@@ -27,6 +27,7 @@ Singleton {
 
     property string _localCommit: ""
     property bool loaded: false
+    property bool checkingUpdates: false
 
     // ── Update process state ────────────────────────────────────────────
     // Lives on the singleton (rather than UpdatesPage) so it survives the
@@ -51,6 +52,7 @@ Singleton {
         if (!GlobalConfig.general.checkUpdates) return;
         if (branch !== "") currentBranch = clampBranch(branch);
         else currentBranch = clampBranch(currentBranch);
+        checkingUpdates = true;
         
         let bashCmd = `
     CURRENT_BRANCH="$1"
@@ -365,8 +367,13 @@ fi
     Process {
         id: gitProcess
         command: []
+        onRunningChanged: {
+            if (!running)
+                root.checkingUpdates = false;
+        }
         stdout: StdioCollector {
             onStreamFinished: {
+                root.checkingUpdates = false;
                 try {
                     const lines = text.trim().split("\n");
                     const parsedCommits = [];
