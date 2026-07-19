@@ -17,9 +17,9 @@ KWinActiveWindowBridgeAdaptor::KWinActiveWindowBridgeAdaptor(QObject* parent)
     : QDBusAbstractAdaptor(parent) {}
 
 void KWinActiveWindowBridgeAdaptor::notifyActiveWindow(
-    const QString& uuid, const QString& title, const QString& appClass, const QString& activeOutputName) {
+    const QString& uuid, const QString& title, const QString& appClass, const QString& activeOutputName, bool isFullscreen, bool isMaximized) {
     if (auto* bridge = qobject_cast<KWinActiveWindowBridge*>(parent())) {
-        bridge->updateActiveWindow(uuid, title, appClass, activeOutputName);
+        bridge->updateActiveWindow(uuid, title, appClass, activeOutputName, isFullscreen, isMaximized);
     }
 }
 
@@ -34,19 +34,60 @@ const BUS = "dev.caelestia.KWinActiveWindow";
 const PATH = "/dev/caelestia/KWinActiveWindow";
 const IFACE = "dev.caelestia.KWinActiveWindow";
 
-function notifyActiveWindow() {
+let currentActiveWindow = null;
+let lastActiveUuid = null;
+let lastFullscreen = null;
+let lastMaximized = null;
+let lastOut = null;
+let lastTitle = null;
+
+function notifyActiveWindowReal() {
     let window = workspace.activeWindow;
     let cursorScreen = workspace.screenAt(workspace.cursorPos);
     let out = cursorScreen ? cursorScreen.name : "";
     if (!window) {
-        callDBus(BUS, PATH, IFACE, "notifyActiveWindow", "", "", "", out);
+        if (lastActiveUuid !== null) {
+            lastActiveUuid = null;
+            callDBus(BUS, PATH, IFACE, "notifyActiveWindow", "", "", "", out, false, false);
+        }
         return;
     }
-    
+
     let uuid = window.internalId ? String(window.internalId) : "";
     let title = window.caption || "";
     let appClass = window.resourceClass || "";
-    callDBus(BUS, PATH, IFACE, "notifyActiveWindow", uuid, title, appClass, out);
+    let isFullscreen = window.fullScreen ? true : false;
+    let isMaximized = (window.maximizeMode === 3) ? true : false;
+
+    if (lastActiveUuid === uuid && lastFullscreen === isFullscreen && lastMaximized === isMaximized && lastOut === out && lastTitle === title) {
+        return;
+    }
+
+    lastActiveUuid = uuid;
+    lastFullscreen = isFullscreen;
+    lastMaximized = isMaximized;
+    lastOut = out;
+    lastTitle = title;
+
+    callDBus(BUS, PATH, IFACE, "notifyActiveWindow", uuid, title, appClass, out, isFullscreen, isMaximized);
+}
+
+function onActiveWindowChanged() {
+    let window = workspace.activeWindow;
+    if (currentActiveWindow !== window) {
+        if (currentActiveWindow) {
+            try { currentActiveWindow.frameGeometryChanged.disconnect(notifyActiveWindowReal); } catch(e){}
+            try { currentActiveWindow.fullScreenChanged.disconnect(notifyActiveWindowReal); } catch(e){}
+            try { currentActiveWindow.maximizedChanged.disconnect(notifyActiveWindowReal); } catch(e){}
+        }
+        currentActiveWindow = window;
+        if (currentActiveWindow) {
+            try { currentActiveWindow.frameGeometryChanged.connect(notifyActiveWindowReal); } catch(e){}
+            try { currentActiveWindow.fullScreenChanged.connect(notifyActiveWindowReal); } catch(e){}
+            try { currentActiveWindow.maximizedChanged.connect(notifyActiveWindowReal); } catch(e){}
+        }
+    }
+    notifyActiveWindowReal();
 }
 
 function notifyWindowList() {
@@ -78,12 +119,12 @@ function notifyWindowList() {
     callDBus(BUS, PATH, IFACE, "notifyWindowList", JSON.stringify(arr));
 }
 
-workspace.windowActivated.connect(notifyActiveWindow);
+workspace.windowActivated.connect(onActiveWindowChanged);
 workspace.windowAdded.connect(notifyWindowList);
 workspace.windowRemoved.connect(notifyWindowList);
 
 // Initial push
-notifyActiveWindow();
+onActiveWindowChanged();
 notifyWindowList();
 )js";
 
@@ -132,8 +173,8 @@ void KWinActiveWindowBridge::setActiveOutputName(const QString& outputName) {
 }
 
 void KWinActiveWindowBridge::updateActiveWindow(
-    const QString& uuid, const QString& title, const QString& appClass, const QString& activeOutputName) {
-    m_activeWindow = QVariantMap{ { "address", uuid }, { "title", title }, { "class", appClass } };
+    const QString& uuid, const QString& title, const QString& appClass, const QString& activeOutputName, bool isFullscreen, bool isMaximized) {
+    m_activeWindow = QVariantMap{ { "address", uuid }, { "title", title }, { "class", appClass }, { "fullscreen", isFullscreen }, { "maximized", isMaximized } };
     if (m_activeOutputName != activeOutputName) {
         m_activeOutputName = activeOutputName;
         QString runtimeDir = qEnvironmentVariable("XDG_RUNTIME_DIR", "/tmp");
@@ -151,9 +192,11 @@ QVariantList KWinActiveWindowBridge::windowList() const {
 }
 
 void KWinActiveWindowBridge::focusWindow(const QString& address) {
-    QTemporaryFile* tempFile = new QTemporaryFile(QDir::tempPath() + "/caelestia-kwin-focus-XXXXXX.js", this);
-    if (!tempFile->open()) {
-        delete tempFile;
+    QString scriptName = "caelestia-kwin-focus-" + QString::number(QCoreApplication::applicationPid()) + "-" +
+                         QString::number(QDateTime::currentMSecsSinceEpoch());
+    QString fileName = QDir::tempPath() + "/" + scriptName + ".js";
+    QFile tempFile(fileName);
+    if (!tempFile.open(QIODevice::WriteOnly)) {
         return;
     }
 
@@ -168,12 +211,8 @@ void KWinActiveWindowBridge::focusWindow(const QString& address) {
     )")
                                .arg(address);
 
-    tempFile->write(scriptSource.toUtf8());
-    QString fileName = tempFile->fileName();
-    tempFile->close();
-
-    QString scriptName = "caelestia-focus-" + QString::number(QCoreApplication::applicationPid()) + "-" +
-                         QString::number(QDateTime::currentMSecsSinceEpoch());
+    tempFile.write(scriptSource.toUtf8());
+    tempFile.close();
 
     QDBusConnection bus = QDBusConnection::sessionBus();
     QDBusMessage loadMsg =
@@ -193,7 +232,51 @@ void KWinActiveWindowBridge::focusWindow(const QString& address) {
         bus.asyncCall(unloadMsg); // Clean up immediately after starting
     }
 
-    tempFile->deleteLater();
+    QFile::remove(fileName);
+}
+
+void KWinActiveWindowBridge::closeWindow(const QString& address) {
+    QString scriptName = "caelestia-kwin-close-" + QString::number(QCoreApplication::applicationPid()) + "-" +
+                         QString::number(QDateTime::currentMSecsSinceEpoch());
+    QString fileName = QDir::tempPath() + "/" + scriptName + ".js";
+    QFile tempFile(fileName);
+    if (!tempFile.open(QIODevice::WriteOnly)) {
+        return;
+    }
+
+    QString scriptSource = QString(R"(
+        let wins = workspace.windowList();
+        for (let i = 0; i < wins.length; ++i) {
+            if (wins[i].internalId && String(wins[i].internalId) === "%1") {
+                wins[i].closeWindow();
+                break;
+            }
+        }
+    )")
+                               .arg(address);
+
+    tempFile.write(scriptSource.toUtf8());
+    tempFile.close();
+
+    QDBusConnection bus = QDBusConnection::sessionBus();
+    QDBusMessage loadMsg =
+        QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "loadScript");
+    loadMsg << fileName << scriptName;
+
+    QDBusReply<int> reply = bus.call(loadMsg);
+    if (reply.isValid()) {
+        int scriptId = reply.value();
+        QDBusMessage runMsg = QDBusMessage::createMethodCall(
+            "org.kde.KWin", QString("/Scripting/Script%1").arg(scriptId), "org.kde.kwin.Script", "run");
+        bus.call(runMsg);
+
+        QDBusMessage unloadMsg =
+            QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "unloadScript");
+        unloadMsg << scriptName;
+        bus.asyncCall(unloadMsg); // Clean up immediately after starting
+    }
+
+    QFile::remove(fileName);
 }
 
 void KWinActiveWindowBridge::updateWindowList(const QString& windowsJson) {

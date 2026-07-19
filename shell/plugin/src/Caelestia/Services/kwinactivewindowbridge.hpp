@@ -16,7 +16,7 @@ public:
     explicit KWinActiveWindowBridgeAdaptor(QObject *parent);
     
 public slots:
-    Q_NOREPLY void notifyActiveWindow(const QString &uuid, const QString &title, const QString &appClass, const QString &activeOutputName);
+    Q_NOREPLY void notifyActiveWindow(const QString &uuid, const QString &title, const QString &appClass, const QString &activeOutputName, bool isFullscreen, bool isMaximized);
     Q_NOREPLY void notifyWindowList(const QString &windowsJson);
 };
 
@@ -38,9 +38,10 @@ public:
     QVariantList windowList() const;
 
     Q_INVOKABLE void focusWindow(const QString &address);
+    Q_INVOKABLE void closeWindow(const QString &address);
     Q_INVOKABLE void setActiveOutputName(const QString &outputName);
 
-    void updateActiveWindow(const QString &uuid, const QString &title, const QString &appClass, const QString &activeOutputName);
+    void updateActiveWindow(const QString &uuid, const QString &title, const QString &appClass, const QString &activeOutputName, bool isFullscreen, bool isMaximized);
     void updateWindowList(const QString &windowsJson);
 
 signals:

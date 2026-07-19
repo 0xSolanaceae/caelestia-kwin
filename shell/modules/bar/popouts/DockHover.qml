@@ -4,6 +4,7 @@ import Quickshell.Wayland
 import Quickshell.Widgets
 import Quickshell.Services.Mpris
 import Caelestia.Config
+import Caelestia.Services
 import qs.components
 import qs.services
 import qs.utils
@@ -46,24 +47,49 @@ StyledRect {
         spacing: Tokens.spacing.small
 
         // Fallback for pinned apps with no active windows
-        RowLayout {
+        StyledRect {
             Layout.fillWidth: true
-            spacing: Tokens.spacing.medium
+            Layout.minimumWidth: previewWidth || 200
+            implicitHeight: fallbackLayout.implicitHeight + Tokens.padding.small * scaleOffset * 2
             visible: !root.model || !root.model.toplevels || root.model.toplevels.length === 0
+            radius: Tokens.rounding.small
+            color: "transparent"
 
-            IconImage {
-                asynchronous: true
-                Layout.alignment: Qt.AlignVCenter
-                implicitSize: fallbackText.implicitHeight
-                source: root.model ? Icons.getAppIcon(root.model.iconName, "image-missing") : ""
+            StateLayer {
+                anchors.margins: -Tokens.padding.medium * scaleOffset / 2
+                anchors.leftMargin: -Tokens.padding.medium * scaleOffset
+                anchors.rightMargin: -Tokens.padding.medium * scaleOffset
+                radius: parent.radius
+                onClicked: {
+                    if (root.model && root.model.entry) {
+                        const subCmd = root.model.entry.runInTerminal
+                            ? [...GlobalConfig.general.apps.terminal, `${Quickshell.shellDir}/assets/wrap_term_launch.sh`, ...root.model.entry.command]
+                            : root.model.entry.command;
+                        SysInfo.executeCommand(subCmd.join(" "));
+                    }
+                    root.popouts.hasCurrent = false;
+                }
             }
 
-            StyledText {
-                id: fallbackText
-                Layout.fillWidth: true
-                text: root.model ? (root.model.entry ? root.model.entry.name : root.model.appClass) : ""
-                font.pointSize: Tokens.font.body.medium.pointSize * root.fontScale
-                elide: Text.ElideRight
+            RowLayout {
+                id: fallbackLayout
+                anchors.fill: parent
+                spacing: Tokens.spacing.medium
+
+                IconImage {
+                    asynchronous: true
+                    Layout.alignment: Qt.AlignVCenter
+                    implicitSize: fallbackText.implicitHeight
+                    source: root.model ? Icons.getAppIcon(root.model.iconName, "image-missing") : ""
+                }
+
+                StyledText {
+                    id: fallbackText
+                    Layout.fillWidth: true
+                    text: root.model ? (root.model.entry ? root.model.entry.name : root.model.appClass) : ""
+                    font.pointSize: Tokens.font.body.medium.pointSize * root.fontScale
+                    elide: Text.ElideRight
+                }
             }
         }
 
@@ -88,7 +114,11 @@ StyledRect {
                     radius: parent.radius
                     onClicked: {
                         if (modelData.address) {
-                            Hypr.dispatch(Hypr.usingLua ? `hl.dsp.focus({ window = "address:0x${modelData.address}" })` : `focuswindow address:0x${modelData.address}`);
+                            if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList) {
+                                KWinActiveWindowBridge.focusWindow(modelData.address);
+                            } else {
+                                Hypr.dispatch(Hypr.usingLua ? `hl.dsp.focus({ window = "address:0x${modelData.address}" })` : `focuswindow address:0x${modelData.address}`);
+                            }
                         }
                         root.popouts.hasCurrent = false;
                     }
@@ -128,7 +158,11 @@ StyledRect {
                             radius: Tokens.rounding.small
                             onClicked: {
                                 if (modelData.address) {
-                                    Hypr.dispatch(Hypr.usingLua ? `hl.dsp.window.close({ window = "address:0x${modelData.address}" })` : `closewindow address:0x${modelData.address}`);
+                                    if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList) {
+                                        KWinActiveWindowBridge.closeWindow(modelData.address);
+                                    } else {
+                                        Hypr.dispatch(Hypr.usingLua ? `hl.dsp.window.close({ window = "address:0x${modelData.address}" })` : `closewindow address:0x${modelData.address}`);
+                                    }
                                 }
                                 root.popouts.hasCurrent = false;
                             }
