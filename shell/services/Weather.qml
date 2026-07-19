@@ -117,6 +117,7 @@ Singleton {
             }
 
             locationSearchResults = results;
+        };
 
         const onError = function() {
             if (token !== locationSearchToken)
