@@ -1,3 +1,4 @@
+import Quickshell
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Wayland
@@ -48,8 +49,7 @@ StyledRect {
 
         // Fallback for pinned apps with no active windows
         StyledRect {
-            Layout.fillWidth: true
-            Layout.minimumWidth: previewWidth || 200
+            implicitWidth: fallbackLayout.implicitWidth + Tokens.padding.small * scaleOffset * 2
             implicitHeight: fallbackLayout.implicitHeight + Tokens.padding.small * scaleOffset * 2
             visible: !root.model || !root.model.toplevels || root.model.toplevels.length === 0
             radius: Tokens.rounding.small
@@ -65,7 +65,11 @@ StyledRect {
                         const subCmd = root.model.entry.runInTerminal
                             ? [...GlobalConfig.general.apps.terminal, `${Quickshell.shellDir}/assets/wrap_term_launch.sh`, ...root.model.entry.command]
                             : root.model.entry.command;
-                        SysInfo.executeCommand(subCmd.join(" "));
+                        const finalCmd = GlobalConfig.services.useSystemd ? ["app2unit", "--", ...subCmd] : subCmd;
+                        Quickshell.execDetached({
+                            command: finalCmd,
+                            workingDirectory: root.model.entry.workingDirectory
+                        });
                     }
                     root.popouts.hasCurrent = false;
                 }
@@ -73,7 +77,7 @@ StyledRect {
 
             RowLayout {
                 id: fallbackLayout
-                anchors.fill: parent
+                anchors.centerIn: parent
                 spacing: Tokens.spacing.medium
 
                 IconImage {
@@ -85,7 +89,6 @@ StyledRect {
 
                 StyledText {
                     id: fallbackText
-                    Layout.fillWidth: true
                     text: root.model ? (root.model.entry ? root.model.entry.name : root.model.appClass) : ""
                     font.pointSize: Tokens.font.body.medium.pointSize * root.fontScale
                     elide: Text.ElideRight
@@ -113,7 +116,8 @@ StyledRect {
                     anchors.rightMargin: -Tokens.padding.medium * scaleOffset
                     radius: parent.radius
                     onClicked: {
-                        if (modelData.address) {
+                        console.log("DOCKHOVER CLOSE CLICKED, ADDRESS:", modelData.address);
+                                  if (modelData.address) {
                             if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList) {
                                 KWinActiveWindowBridge.focusWindow(modelData.address);
                             } else {

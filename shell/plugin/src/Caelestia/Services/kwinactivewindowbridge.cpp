@@ -7,6 +7,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QTemporaryFile>
+#include <QProcess>
 #include <QtDBus/QDBusConnection>
 #include <QtDBus/QDBusMessage>
 #include <QtDBus/QDBusReply>
@@ -104,6 +105,7 @@ function notifyWindowList() {
             }
             arr.push({
                 address: w.internalId ? String(w.internalId) : "",
+                pid: w.pid || 0,
                 title: w.caption || "",
                 class: w.resourceClass || "",
                 x: w.frameGeometry ? w.frameGeometry.x : w.x,
@@ -214,28 +216,17 @@ void KWinActiveWindowBridge::focusWindow(const QString& address) {
     tempFile.write(scriptSource.toUtf8());
     tempFile.close();
 
-    QDBusConnection bus = QDBusConnection::sessionBus();
-    QDBusMessage loadMsg =
-        QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "loadScript");
-    loadMsg << fileName << scriptName;
-
-    QDBusReply<int> reply = bus.call(loadMsg);
-    if (reply.isValid()) {
-        int scriptId = reply.value();
-        QDBusMessage runMsg = QDBusMessage::createMethodCall(
-            "org.kde.KWin", QString("/Scripting/Script%1").arg(scriptId), "org.kde.kwin.Script", "run");
-        bus.call(runMsg);
-
-        QDBusMessage unloadMsg =
-            QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "unloadScript");
-        unloadMsg << scriptName;
-        bus.asyncCall(unloadMsg); // Clean up immediately after starting
-    }
-
-    QFile::remove(fileName);
+    QProcess::startDetached("bash", { "-c", QString(
+        "qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript %1 %2 > /dev/null && "
+        "script_id=$(qdbus6 org.kde.KWin | grep '/Scripting/Script' | tail -n 1) && "
+        "if [ ! -z \"$script_id\" ]; then qdbus6 org.kde.KWin $script_id org.kde.kwin.Script.run; fi; "
+        "qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript %2; "
+        "rm -f %1").arg(fileName).arg(scriptName)
+    });
 }
 
 void KWinActiveWindowBridge::closeWindow(const QString& address) {
+    qWarning() << "CLOSE WINDOW CALLED WITH ADDRESS" << address;
     QString scriptName = "caelestia-kwin-close-" + QString::number(QCoreApplication::applicationPid()) + "-" +
                          QString::number(QDateTime::currentMSecsSinceEpoch());
     QString fileName = QDir::tempPath() + "/" + scriptName + ".js";
@@ -258,25 +249,13 @@ void KWinActiveWindowBridge::closeWindow(const QString& address) {
     tempFile.write(scriptSource.toUtf8());
     tempFile.close();
 
-    QDBusConnection bus = QDBusConnection::sessionBus();
-    QDBusMessage loadMsg =
-        QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "loadScript");
-    loadMsg << fileName << scriptName;
-
-    QDBusReply<int> reply = bus.call(loadMsg);
-    if (reply.isValid()) {
-        int scriptId = reply.value();
-        QDBusMessage runMsg = QDBusMessage::createMethodCall(
-            "org.kde.KWin", QString("/Scripting/Script%1").arg(scriptId), "org.kde.kwin.Script", "run");
-        bus.call(runMsg);
-
-        QDBusMessage unloadMsg =
-            QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "unloadScript");
-        unloadMsg << scriptName;
-        bus.asyncCall(unloadMsg); // Clean up immediately after starting
-    }
-
-    QFile::remove(fileName);
+    QProcess::startDetached("bash", { "-c", QString(
+        "qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript %1 %2 > /dev/null && "
+        "script_id=$(qdbus6 org.kde.KWin | grep '/Scripting/Script' | tail -n 1) && "
+        "if [ ! -z \"$script_id\" ]; then qdbus6 org.kde.KWin $script_id org.kde.kwin.Script.run; fi; "
+        "qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript %2; "
+        "rm -f %1").arg(fileName).arg(scriptName)
+    });
 }
 
 void KWinActiveWindowBridge::updateWindowList(const QString& windowsJson) {
