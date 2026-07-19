@@ -13,25 +13,7 @@ VerticalFadeFlickable {
 
     required property NexusState nState
     readonly property string normalizedQuery: root.nState.searchQuery.trim().toLowerCase()
-    readonly property var filteredPages: {
-        const query = root.normalizedQuery;
-        const pages = PageRegistry.pages;
-
-        if (!query)
-            return pages.map((page, pageIdx) => ({
-                page,
-                pageIdx
-            }));
-
-        return pages.flatMap((page, pageIdx) => {
-            const label = (page.label ?? "").toLowerCase();
-            const description = (page.description ?? "").toLowerCase();
-            return (label.includes(query) || description.includes(query)) ? [{
-                page,
-                pageIdx
-            }] : [];
-        });
-    }
+    readonly property var filteredPages: PageRegistry.fuzzyPages(root.normalizedQuery)
 
     topMargin: Tokens.padding.large
     bottomMargin: Tokens.padding.large
