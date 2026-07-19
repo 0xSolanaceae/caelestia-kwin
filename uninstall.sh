@@ -313,6 +313,8 @@ for f in \
     "$HOME/.local/bin/qs-kwin-bridge.py" \
     "$HOME/.local/bin/caelestia-shortcuts" \
     "$HOME/.local/bin/caelestia-record" \
+    "$HOME/.local/bin/caelestia-keyd-run" \
+    "$HOME/.local/bin/caelestia-shell-ipc" \
     "$HOME/.local/bin/ydotoold-wrapper" \
     "$HOME/.local/bin/caelestia-update" \
     "$HOME/.local/bin/caelestia-check-updates"
