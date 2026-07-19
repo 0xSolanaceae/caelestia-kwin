@@ -192,7 +192,7 @@ https://github.com/user-attachments/assets/9ad2e5f5-f80e-48c0-b65b-a4084bb363c6
   <summary><b>Theme Colors</b></summary></br>
  
   - Type `>` in app launcher and select `Scheme`.
-  - *Note: When switching between dark and light theme, you need to go to `Kde Settings -> Colors & Themes -> Colors` and select Material You Dark or Light based on your preference.*
+  - *Note: When switching between dark and light theme, you need to go to `KDE Settings -> Colors & Themes -> Colors` and select Material You Dark or Light based on your preference.*
 </details>
 <details>
   <summary><b>Keyboard Shortcuts</b></summary></br>
