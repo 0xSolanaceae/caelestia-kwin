@@ -87,17 +87,18 @@ Scope {
     }
 
     // qmllint disable unresolved-type
-    CustomShortcut {
-        // qmllint enable unresolved-type
-        name: "lock"
-        key: "Meta+L"
-        description: "Lock the current session"
-        onPressed: {
-            if (root.hasFullscreen)
-                return;
-            Quickshell.execDetached(["caelestia", "shell", "lock", "lock"]);
-        }
-    }
+    // USING plasma-wallpaper-application plugin for now
+    // CustomShortcut {
+    //     // qmllint enable unresolved-type
+    //     name: "lock"
+    //     key: "Meta+L"
+    //     description: "Lock the current session"
+    //     onPressed: {
+    //         if (root.hasFullscreen)
+    //             return;
+    //         Quickshell.execDetached(["caelestia", "shell", "lock", "lock"]);
+    //     }
+    // }
 
     // qmllint disable unresolved-type
     CustomShortcut {
