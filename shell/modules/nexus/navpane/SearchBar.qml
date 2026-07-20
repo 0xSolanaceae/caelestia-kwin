@@ -55,11 +55,15 @@ StyledRect {
             font: Tokens.font.body.large
             onTextChanged: root.nState.searchQuery = text
 
-            Keys.onReturnPressed: {
-                const results = PageRegistry.fuzzyPages(text);
-                if (results.length > 0)
-                    root.nState.currentPageIdx = results[0].pageIdx;
-            }
+Keys.onReturnPressed: {
+    const query = text.trim();
+    if (!query)
+        return;
+
+    const results = PageRegistry.fuzzyPages(query);
+    if (results.length > 0)
+        root.nState.currentPageIdx = results[0].pageIdx;
+}
 
             Binding {
                 target: root.nState
