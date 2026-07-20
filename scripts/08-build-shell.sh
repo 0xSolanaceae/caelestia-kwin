@@ -35,6 +35,16 @@ if [[ "${CAELESTIA_SETUP_RUNNING:-0}" == "0" ]]; then
     else
         warn "plasma-wallpaper-application not found, Skipping installation"
     fi
+
+    info "Installing qt6-wayland if missing..."
+    if command -v pacman >/dev/null; then
+        info "Installing via pacman..."
+        sudo pacman -S --needed qt6-wayland --noconfirm || warn "qt6-wayland install failed..."
+    elif command -v dnf >/dev/null; then
+        info "Installing via dnf..."
+        sudo dnf install --needed qt6-qtwayland -y || warn "qt6-qtwayland install failed..."
+    fi
+    
     if [[ "${CAELESTIA_SKIP_DEPLOY:-0}" == "0" ]]; then
         info "Configuring KDE Lock Screen to use Caelestia..."
         if command -v kwriteconfig6 >/dev/null 2>&1 && command -v kpackagetool6 >/dev/null 2>&1; then
