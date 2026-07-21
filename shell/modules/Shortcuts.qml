@@ -56,7 +56,7 @@ Scope {
         onPressed: {
             if (root.hasFullscreen)
                 return;
-            Quickshell.execDetached(["caelestia", "shell", "region", "screenshot"]);
+            regionSelector.screenshot();
         }
     }
 
@@ -69,7 +69,7 @@ Scope {
         onPressed: {
             if (root.hasFullscreen)
                 return;
-            Quickshell.execDetached(["caelestia", "shell", "region", "search"]);
+            regionSelector.search();
         }
     }
 
@@ -82,7 +82,7 @@ Scope {
         onPressed: {
             if (root.hasFullscreen)
                 return;
-            Quickshell.execDetached(["caelestia", "shell", "region", "record"]);
+            regionSelector.record();
         }
     }
 
@@ -118,7 +118,7 @@ Scope {
     CustomShortcut {
         // qmllint enable unresolved-type
         name: "launcher"
-        key: "Meta+Space"
+        key: "Meta+Space; Meta"
         description: "Toggle launcher"
         onPressed: root.launcherInterrupted = false
         onReleased: {
